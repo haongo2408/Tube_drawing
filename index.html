@@ -1,43 +1,150 @@
-<!DOCTYPE html>
-<html>
-  <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Home Page</title>
-  <link rel="stylesheet" href="./Lib/main.css" />
-  <link rel="stylesheet" href="./Lib/home.css" />
-  </head>
-  <body>
-    <header>Home Page</header>
-      <div style="flex-direction: row; display:flex;">
-            <button id="drawing">Drawing Report</button>
-            <button id="washing">Washing Report</button>
-            <button id="ordersheet">Ordersheet</button>
-            <button id="print">Print Directive</button>
-            <button id="aging">Aging</button>
-            <button id="die_plug">Die&Plug</button>
-      </div>
-      <div>
-      </div>
-      <script src="./Lib/jquery.min.js"></script>
-      <script>
-        $(document).on("click", "#drawing", function () {
-          window.open("/diereport/Tube_Drawing/DailyReport/");
-        });
-        $(document).on("click", "#washing", function () {
-          window.open("/diereport/Tube_Drawing/Washing/");
-        });
-        $(document).on("click", "#ordersheet", function () {
-          window.open("/diereport/Tube_Drawing/OrderSheet/");
-        });
-        $(document).on("click", "#print", function () {
-          window.open("/diereport/Tube_Drawing/PrintDirective/");
-        });
-        $(document).on("click", "#aging", function () {
-          window.open("/diereport/ex0.11/AgingV4.html");
-        });
-        $(document).on("click", "#die_plug", function () {
-          window.open("/diereport/Tube_Drawing/DiePlug/");
-        });
-      </script>
+<!doctype html>
+<html lang="vi">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Tube Drawing — Home</title>
+		<link rel="stylesheet" href="./Lib/main.css" />
+		<link rel="stylesheet" href="./Lib/home.css" />
+	</head>
+	<body>
+		<div class="app-shell">
+			<!-- HEADER -->
+			<div class="hdr">
+				<div class="hdr-top">
+					<h1>
+						⚙ ALUMINUM DRAWING <span class="accent">/ Tube Drawing System</span>
+					</h1>
+					<div class="hdr-r">
+						<div class="hdr-date" id="hdr_date"></div>
+						<div class="hdr-clock" id="hdr_clock"></div>
+					</div>
+				</div>
+				<div class="hdr-info">
+					<span>🏭 <b>SX Ống Nhôm</b></span>
+					<span>🔧 <b>Cold Drawing</b></span>
+					<span>👷 <b>Nguyễn Hải Đăng</b></span>
+					<span>📍 <b>XAMPP Local · 10.163.50.17</b></span>
+				</div>
+				<div class="status-bar">
+					<div class="sb-item">
+						<span>先付</span><span class="sb-v">→</span>
+					</div>
+					<div class="sb-item">
+						<span>引抜 BN</span>
+						<div class="andon"></div>
+					</div>
+					<div class="sb-item">
+						<span>切断</span><span class="sb-v">→</span>
+					</div>
+					<div class="sb-item">
+						<span>矯正</span><span class="sb-v">→</span>
+					</div>
+					<div class="sb-item">
+						<span>洗浄</span><span class="sb-v">→</span>
+					</div>
+					<div class="sb-item">
+						<span>検査</span><span class="sb-v">→</span>
+					</div>
+					<div class="sb-item">
+						<span>時効</span><span class="sb-v">✓</span>
+					</div>
+					<div class="sb-item">v2.0</div>
+				</div>
+			</div>
+
+			<!-- MAIN -->
+			<main class="home-main">
+				<div class="sec-lbl">
+					<span class="dot"></span>
+					Chọn module làm việc
+				</div>
+
+				<div class="nav-grid">
+					<button class="nav-card" onclick="go('drawing')">
+						<div class="nav-badge">Daily</div>
+						<span class="nav-icon">📋</span>
+						<span class="nav-name">Drawing Report</span>
+						<span class="nav-desc">Báo cáo kéo ống hàng ngày · 引抜日報</span>
+					</button>
+
+					<button class="nav-card" onclick="go('washing')">
+						<div class="nav-badge">洗浄</div>
+						<span class="nav-icon">🚿</span>
+						<span class="nav-name">Washing Report</span>
+						<span class="nav-desc">Báo cáo rửa / 洗浄工程</span>
+					</button>
+
+					<button class="nav-card" onclick="go('ordersheet')">
+						<div class="nav-badge">Order</div>
+						<span class="nav-icon">📑</span>
+						<span class="nav-name">Ordersheet</span>
+						<span class="nav-desc">Quản lý đơn hàng sản xuất</span>
+					</button>
+
+					<button class="nav-card" onclick="go('print')">
+						<div class="nav-badge">Print</div>
+						<span class="nav-icon">🖨️</span>
+						<span class="nav-name">Print Directive</span>
+						<span class="nav-desc">Chỉ thị in ấn / 印刷指示</span>
+					</button>
+
+					<button class="nav-card" onclick="go('aging')">
+						<div class="nav-badge">時効</div>
+						<span class="nav-icon">🔥</span>
+						<span class="nav-name">Aging</span>
+						<span class="nav-desc">Ủ nhiệt / 時効処理</span>
+					</button>
+
+					<button class="nav-card" onclick="go('die_plug')">
+						<div class="nav-badge">Die</div>
+						<span class="nav-icon">🔩</span>
+						<span class="nav-name">Die &amp; Plug</span>
+						<span class="nav-desc">Quản lý khuôn và lõi kéo</span>
+					</button>
+
+					<button class="nav-card dash" onclick="go('dashboard')">
+						<div class="nav-badge">NEW</div>
+						<span class="nav-icon">📊</span>
+						<span class="nav-name">生産管理 Dashboard</span>
+						<span class="nav-desc">KPI · Kế hoạch · Nhân sự · NG · OEE</span>
+					</button>
+				</div>
+			</main>
+
+			<footer class="app-footer">
+				AL Cold Drawing · 19 SKU · MB × 6 / NCA × 5 / CG × 8 · 先付 → 引抜 →
+				切断 → 矯正 → 洗浄 → 検査 → 時効処理
+			</footer>
+		</div>
+
+		<script>
+			const ROUTES = {
+				drawing: '/diereport/Tube_Drawing/DailyReport/',
+				washing: '/diereport/Tube_Drawing/Washing/',
+				ordersheet: '/diereport/Tube_Drawing/OrderSheet/',
+				print: '/diereport/Tube_Drawing/PrintDirective/',
+				aging: '/diereport/ex0.11/AgingV4.html',
+				die_plug: '/diereport/Tube_Drawing/DiePlug/',
+				dashboard: '/diereport/Tube_Drawing/DashBoard_New/DashBoard_New.html',
+			};
+			function go(id) {
+				window.open(ROUTES[id]);
+			}
+
+			(function tick() {
+				const n = new Date();
+				document.getElementById('hdr_clock').textContent = n
+					.toTimeString()
+					.slice(0, 8);
+				document.getElementById('hdr_date').textContent =
+					n.getFullYear() +
+					'-' +
+					String(n.getMonth() + 1).padStart(2, '0') +
+					'-' +
+					String(n.getDate()).padStart(2, '0');
+				setTimeout(tick, 1000);
+			})();
+		</script>
+	</body>
 </html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Page</title>
+  <link rel="stylesheet" href="./Lib/main.css" />
+  <link rel="stylesheet" href="./Lib/home.css" />
+  </head>
+  <body>
+    <header>Home Page</header>
+      <div style="flex-direction: row; display:flex;">
+            <button id="drawing">Drawing Report</button>
+            <button id="washing">Washing Report</button>
+            <button id="ordersheet">Ordersheet</button>
+            <button id="print">Print Directive</button>
+            <button id="aging">Aging</button>
+            <button id="die_plug">Die&Plug</button>
+      </div>
+      <div>
+      </div>
+      <script src="./Lib/jquery.min.js"></script>
+      <script>
+        $(document).on("click", "#drawing", function () {
+          window.open("/diereport/Tube_Drawing/DailyReport/");
+        });
+        $(document).on("click", "#washing", function () {
+          window.open("/diereport/Tube_Drawing/Washing/");
+        });
+        $(document).on("click", "#ordersheet", function () {
+          window.open("/diereport/Tube_Drawing/OrderSheet/");
+        });
+        $(document).on("click", "#print", function () {
+          window.open("/diereport/Tube_Drawing/PrintDirective/");
+        });
+        $(document).on("click", "#aging", function () {
+          window.open("/diereport/ex0.11/AgingV4.html");
+        });
+        $(document).on("click", "#die_plug", function () {
+          window.open("/diereport/Tube_Drawing/DiePlug/");
+        });
+      </script>
+</html>

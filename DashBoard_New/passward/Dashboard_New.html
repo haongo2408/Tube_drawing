@@ -1,0 +1,2947 @@
+<!doctype html>
+<html lang="vi">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+		<title>生産管理 v7 — AL Cold Drawing</title>
+		<link rel="stylesheet" href="./css/dasboard.css" />
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+	</head>
+	<body>
+		<div class="page">
+			<!-- EDIT BAR -->
+			<div class="edit-bar" id="edit_bar">
+				<span>✏️ EDIT MODE — Click text để sửa</span>
+				<button class="ebn save" onclick="confirmSave()">💾 Lưu & Thoát</button>
+				<button class="ebn" onclick="exitEdit(false)">
+					✕ Thoát (không lưu)
+				</button>
+				<span style="margin-left: auto; font-size: 10px; opacity: 0.7"
+					>Ctrl+S = lưu nhanh</span
+				>
+			</div>
+
+			<!-- HEADER -->
+			<div class="hdr" id="main_hdr">
+				<div class="hdr-top">
+					<div>
+						<h1 id="lbl_title">生産管理 Dashboard v7</h1>
+						<div
+							style="font-size: 10px; opacity: 0.6; margin-top: 1px"
+							id="lbl_subtitle">
+							AL Cold Drawing Tube — 19 mã × 3 Series × 5 Kotei
+						</div>
+					</div>
+					<div class="hdr-r">
+						<div id="hdr_shift">450 ph/ca · 89% util · 2 ca/ngày</div>
+						<div class="hdr-bn" id="hdr_bn">BN ⚠ | SYS: — pcs/ca</div>
+					</div>
+				</div>
+				<div class="hdr-info">
+					<span>🏭 Phòng: <b id="lbl_dept">SX Ống Nhôm</b></span>
+					<span>🔧 Bộ phận: <b id="lbl_unit">Cold Drawing</b></span>
+					<span>👷 PIC: <b id="lbl_pic">Nguyễn Hải Đăng</b></span>
+					<span style="margin-left: auto" id="hdr_date"></span>
+				</div>
+				<div class="status-bar">
+					<div class="sb-item" id="sb_sys">
+						<span>SYS</span><span class="v">—</span><span>pcs/ca</span>
+					</div>
+					<div class="sb-item" id="sb_pct">
+						<span>月達成</span><span class="v">—</span>
+					</div>
+					<div class="sb-item" id="sb_oee">
+						<span>OEE</span><span class="v">—</span>
+					</div>
+					<div class="sb-item">
+						<span>状態</span>
+						<div class="andon grn" id="andon"></div>
+						<span id="andon_txt">OK</span>
+					</div>
+					<div class="sb-item" style="margin-left: auto">
+						<span id="sb_clock"></span>
+					</div>
+				</div>
+			</div>
+
+			<!-- CONTROLS -->
+			<div class="ctrl">
+				<div
+					style="
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						margin-bottom: 8px;
+						flex-wrap: wrap;
+						gap: 8px;
+					">
+					<span
+						style="
+							font-size: 10px;
+							font-weight: 700;
+							color: var(--t2);
+							text-transform: uppercase;
+							letter-spacing: 0.4px;
+						"
+						data-i18n="lbl_shift_params"
+						>Thông số ca làm việc</span
+					>
+					<div
+						style="
+							display: flex;
+							gap: 5px;
+							flex-wrap: wrap;
+							align-items: center;
+						">
+						<div style="display: flex; align-items: center; gap: 4px">
+							<span
+								style="font-size: 9px; color: var(--t3); white-space: nowrap"
+								>🌐 Ngôn ngữ</span
+							>
+							<div class="lang-toggle">
+								<button
+									class="lang-btn act"
+									id="lang_vi"
+									onclick="setLang('vi')">
+									VN
+								</button>
+								<button class="lang-btn" id="lang_jp" onclick="setLang('jp')">
+									JP
+								</button>
+								<button class="lang-btn" id="lang_en" onclick="setLang('en')">
+									EN
+								</button>
+							</div>
+						</div>
+						<div style="width: 1px; height: 18px; background: var(--bdr)"></div>
+						<button
+							class="btn sm"
+							style="background: #f59e0b; color: #000; border-color: #f59e0b"
+							onclick="enterEdit()"
+							id="edit_btn"
+							data-i18n="btn_edit">
+							✏️ Edit Mode
+						</button>
+						<button
+							class="btn sm pri"
+							onclick="saveAll()"
+							data-i18n="btn_save_all">
+							💾 Save All
+						</button>
+						<button
+							class="btn sm"
+							onclick="showTemplates()"
+							data-i18n="btn_templates">
+							📄 Templates
+						</button>
+						<button
+							class="btn sm"
+							onclick="downloadHTML()"
+							data-i18n="btn_export_html">
+							📦 Export HTML
+						</button>
+						<button
+							class="btn sm"
+							style="background: #0f766e; color: #fff; border-color: #0f766e"
+							onclick="exportJSON()"
+							title="Export toàn bộ data ra file .json"
+							data-i18n="btn_export_json">
+							💾 Export JSON
+						</button>
+						<label
+							class="btn sm"
+							style="
+								cursor: pointer;
+								margin: 0;
+								background: #7c3aed;
+								color: #fff;
+								border-color: #7c3aed;
+							"
+							data-i18n="btn_import_json"
+							>📂 Import JSON<input
+								type="file"
+								accept=".json"
+								style="display: none"
+								onchange="importJSON(this)"
+						/></label>
+						<!-- PHASE 2: DB badge + Import Excel
+           DB badge: 🟢=kết nối MySQL OK | 🔴=offline dùng localStorage
+           Import Excel: upload file 計画実績_YYYYMM.xlsx → api.php?action=import_excel
+           SQL: INSERT INTO t_plan_actual ON DUPLICATE KEY UPDATE -->
+						<span
+							id="api_badge"
+							style="
+								font-size: 10px;
+								padding: 2px 8px;
+								border-radius: 10px;
+								background: rgba(255, 255, 255, 0.15);
+								color: #fff;
+								cursor: default;
+								white-space: nowrap;
+							"
+							title="Đang kiểm tra kết nối DB..."
+							>⏳ DB</span
+						>
+						<label
+							class="btn sm"
+							style="
+								cursor: pointer;
+								margin: 0;
+								background: #0369a1;
+								color: #fff;
+								border-color: #0369a1;
+							"
+							title="Import file 計画実績 xlsx → MySQL t_plan_actual">
+							📥 Import Excel
+							<input
+								type="file"
+								accept=".xlsx"
+								style="display: none"
+								onchange="
+									(function (f) {
+										if (!f) return;
+										const mo =
+											document.getElementById('plan_month')?.value ||
+											new Date().toISOString().slice(0, 7);
+										apiImportExcel(f, mo);
+									})(this.files[0]);
+									this.value = '';
+								" />
+						</label>
+						<!-- AUTH (P3-A): badge user đang login + nút đổi password/đăng xuất -->
+						<span id="user_badge" style="font-size: 10px; color: #fff; white-space: nowrap; display: flex; align-items: center; gap: 4px"></span>
+					</div>
+				</div>
+				<div class="ctrl-g">
+					<div class="ci">
+						<label
+							>⏱ <span data-i18n="lbl_avail">Làm việc</span>
+							<span class="sv" id="v_avail">450</span
+							><span class="su">ph/ca</span></label
+						>
+						<input
+							type="range"
+							id="s_avail"
+							min="360"
+							max="540"
+							step="10"
+							value="450"
+							oninput="syncCtrl()" />
+					</div>
+					<div class="ci">
+						<label
+							>⚙ <span data-i18n="lbl_util">Utilization</span>
+							<span class="sv" id="v_util">89</span
+							><span class="su">%</span></label
+						>
+						<input
+							type="range"
+							id="s_util"
+							min="60"
+							max="100"
+							step="1"
+							value="89"
+							oninput="syncCtrl()" />
+					</div>
+					<div class="ci">
+						<label
+							>🔢 <span data-i18n="lbl_ca">Ca/ngày</span>
+							<span class="sv" id="v_ca">2</span
+							><span class="su" data-i18n="lbl_ca_unit">ca</span></label
+						>
+						<input
+							type="range"
+							id="s_ca"
+							min="1"
+							max="3"
+							step="1"
+							value="2"
+							oninput="syncCtrl()" />
+					</div>
+				</div>
+			</div>
+
+			<!-- TABS -->
+			<div class="tabs">
+				<button class="tab act" onclick="goTab('overview', this)">
+					📊 Overview
+				</button>
+				<button class="tab" onclick="goTab('plan', this)">📅 Kế hoạch</button>
+				<button class="tab" onclick="goTab('ctsx', this)">📦 CTSX</button>
+				<button class="tab" onclick="goTab('pulse', this)">
+					⚡ Cycle/Pulse
+				</button>
+				<button class="tab" onclick="goTab('heatmap', this)">🟩 Heatmap</button>
+				<button class="tab" onclick="goTab('compare', this)">📊 So sánh</button>
+				<button class="tab" onclick="goTab('ca3', this)">🔄 3 Ca</button>
+				<button class="tab" onclick="goTab('worker', this)">👷 Nhân sự</button>
+				<button class="tab" onclick="goTab('quality', this)">❌ NG/QC</button>
+				<button class="tab" onclick="goTab('incident', this)">
+					🔧 Sự cố TB
+				</button>
+				<button class="tab" onclick="goTab('reports', this)">📋 Báo cáo</button>
+				<button class="tab" onclick="goTab('capacity', this)">
+					⚙ Năng lực
+				</button>
+				<button class="tab" onclick="goTab('help', this)">❓ Hướng dẫn</button>
+			</div>
+
+			<!-- ═══ OVERVIEW ═══ -->
+			<div id="tab-overview" class="panel act">
+				<!-- ROW 1: KPI cards -->
+				<div class="mc-g" id="ov_kpi" style="margin-bottom: 8px"></div>
+
+				<!-- ROW 2: Series summary strip -->
+				<div class="g3" id="ov_series" style="margin-bottom: 8px"></div>
+
+				<!-- ROW 3: Tiến độ (60%) + Pie (40%) -->
+				<div id="ov_layout_main" style="margin-bottom: 8px">
+					<!-- Tiến độ tháng -->
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--blue)"></span
+							><span data-i18n="ct_tiendo">Tiến độ tháng</span>
+							<div
+								style="
+									margin-left: auto;
+									display: flex;
+									gap: 5px;
+									align-items: center;
+									flex-wrap: wrap;
+								">
+								<input
+									type="month"
+									id="ov_month"
+									value="2026-06"
+									class="inp"
+									style="font-size: 10px; padding: 2px 5px"
+									onchange="renderOverview()" />
+								<select
+									id="ov_filter"
+									style="font-size: 10px; padding: 2px 5px"
+									onchange="ovFilterChanged()"
+									class="always-editable">
+									<option value="ALL" data-i18n="opt_all">Tất cả</option>
+									<option value="MB">MB</option>
+									<option value="NCA">NCA</option>
+									<option value="CG">CG</option>
+								</select>
+								<select
+									id="ov_sku"
+									style="font-size: 10px; padding: 2px 5px; display: none"
+									onchange="ovSkuChanged()"
+									class="always-editable">
+									<option value="ALL" data-i18n="opt_all_sku">Mọi mã</option>
+								</select>
+								<select
+									id="ov_sort"
+									style="font-size: 10px; padding: 2px 5px"
+									onchange="renderOverview()"
+									class="always-editable">
+									<option value="series" data-i18n="sort_series">
+										Nhóm Series
+									</option>
+									<option value="pct_desc" data-i18n="sort_pct_desc">
+										% Đạt (cao→thấp)
+									</option>
+									<option value="pct_asc" data-i18n="sort_pct_asc">
+										% Đạt (thấp→cao)
+									</option>
+									<option value="tt_desc" data-i18n="sort_tt_desc">
+										TT cao nhất
+									</option>
+									<option value="kh_desc" data-i18n="sort_kh_desc">
+										KH cao nhất
+									</option>
+									<option value="code" data-i18n="sort_code">
+										Mã SP (A-Z)
+									</option>
+								</select>
+							</div>
+						</div>
+						<div id="ov_progress_bars"></div>
+					</div>
+
+					<!-- Pie 4-in-1: 3 series hàng ngang + tổng to ở dưới -->
+					<div class="card" style="padding: 12px; overflow: hidden">
+						<div class="ct">
+							<span class="dot" style="background: var(--pur-m)"></span
+							><span data-i18n="ct_titrongsl">Tỉ trọng sản lượng</span>
+							<span
+								id="ov_pie_f"
+								style="margin-left: auto; font-size: 9.5px; color: var(--t3)"
+								>Tất cả</span
+							>
+						</div>
+						<!-- Row 1: 3 series hàng ngang, mỗi cái là flex row [pie | legend] -->
+						<div
+							style="
+								display: grid;
+								grid-template-columns: 1fr 1fr 1fr;
+								gap: 10px;
+								margin-bottom: 10px;
+							">
+							<div id="pie_wrap_MB" style="overflow: hidden">
+								<div
+									style="
+										font-size: 9px;
+										font-weight: 700;
+										color: #1e5fa8;
+										margin-bottom: 4px;
+										text-align: center;
+									">
+									MB Series
+								</div>
+								<div
+									style="
+										display: flex;
+										align-items: center;
+										gap: 6px;
+										min-width: 0;
+									">
+									<div
+										style="
+											position: relative;
+											height: 76px;
+											width: 76px;
+											flex-shrink: 0;
+										">
+										<canvas id="pieChart_MB"></canvas>
+									</div>
+									<div
+										id="pie_leg_MB"
+										class="pie-leg"
+										style="flex: 1; min-width: 0; overflow: hidden"></div>
+								</div>
+							</div>
+							<div id="pie_wrap_NCA" style="overflow: hidden">
+								<div
+									style="
+										font-size: 9px;
+										font-weight: 700;
+										color: #dc2626;
+										margin-bottom: 4px;
+										text-align: center;
+									">
+									NCA Series
+								</div>
+								<div
+									style="
+										display: flex;
+										align-items: center;
+										gap: 6px;
+										min-width: 0;
+									">
+									<div
+										style="
+											position: relative;
+											height: 76px;
+											width: 76px;
+											flex-shrink: 0;
+										">
+										<canvas id="pieChart_NCA"></canvas>
+									</div>
+									<div
+										id="pie_leg_NCA"
+										class="pie-leg"
+										style="flex: 1; min-width: 0; overflow: hidden"></div>
+								</div>
+							</div>
+							<div id="pie_wrap_CG" style="overflow: hidden">
+								<div
+									style="
+										font-size: 9px;
+										font-weight: 700;
+										color: #16a34a;
+										margin-bottom: 4px;
+										text-align: center;
+									">
+									CG Series
+								</div>
+								<div
+									style="
+										display: flex;
+										align-items: center;
+										gap: 6px;
+										min-width: 0;
+									">
+									<div
+										style="
+											position: relative;
+											height: 76px;
+											width: 76px;
+											flex-shrink: 0;
+										">
+										<canvas id="pieChart_CG"></canvas>
+									</div>
+									<div
+										id="pie_leg_CG"
+										class="pie-leg"
+										style="flex: 1; min-width: 0; overflow: hidden"></div>
+								</div>
+							</div>
+						</div>
+						<!-- Row 2: Tổng cộng — centered, larger -->
+						<div
+							style="
+								border-top: 1px solid var(--bdr);
+								padding-top: 8px;
+								display: flex;
+								align-items: center;
+								justify-content: center;
+								gap: 16px;
+							">
+							<div>
+								<div
+									style="
+										font-size: 9px;
+										font-weight: 700;
+										color: var(--navy);
+										margin-bottom: 4px;
+										text-align: center;
+									">
+									Tổng cộng
+								</div>
+								<div style="position: relative; height: 100px; width: 100px">
+									<canvas id="pieChart"></canvas>
+								</div>
+							</div>
+							<div
+								id="pie_leg_total"
+								style="
+									font-size: 10px;
+									line-height: 2.2;
+									min-width: 120px;
+								"></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- ROW 4: Lũy kế + Nhân sự -->
+				<div class="g2" style="margin-bottom: 8px">
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--grn-m)"></span
+							><span data-i18n="ct_luyk">Lũy kế tháng</span>
+							<select
+								id="ov_cum_f"
+								style="margin-left: auto; font-size: 10px; padding: 2px 5px"
+								onchange="ovCumChanged()">
+								<option value="ALL">Tất cả</option>
+								<option value="MB">MB</option>
+								<option value="NCA">NCA</option>
+								<option value="CG">CG</option>
+							</select>
+						</div>
+						<div style="position: relative; height: 150px">
+							<canvas id="ovCumChart"></canvas>
+						</div>
+					</div>
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--pur-m)"></span
+							><span data-i18n="ct_staff">👷 Nhân sự hôm nay</span>
+						</div>
+						<div id="ov_staff"></div>
+					</div>
+				</div>
+
+				<!-- ROW 5: NG summary + OEE + Issues -->
+				<div class="g3" style="margin-bottom: 8px">
+					<!-- NG Summary -->
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--red-m)"></span
+							><span data-i18n="ct_ng_summary">⚠ NG Summary</span>
+							<span
+								style="margin-left: auto; font-size: 9px; color: var(--t3)"
+								id="ng_sum_mo"></span>
+						</div>
+						<div id="ov_ng_summary"></div>
+					</div>
+					<!-- OEE -->
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--amb-m)"></span
+							><span data-i18n="ct_oee">OEE + Giờ công</span>
+						</div>
+						<div class="oee-row" style="margin-bottom: 10px">
+							<div>
+								<label
+									style="
+										font-size: 10px;
+										color: var(--t2);
+										display: block;
+										margin-bottom: 2px;
+									"
+									>Avail%</label
+								>
+								<input
+									type="number"
+									class="oee-in"
+									id="oee_a"
+									value="89"
+									min="0"
+									max="100"
+									oninput="calcOEE()" />
+							</div>
+							<div>
+								<label
+									style="
+										font-size: 10px;
+										color: var(--t2);
+										display: block;
+										margin-bottom: 2px;
+									"
+									>Perf%</label
+								>
+								<input
+									type="number"
+									class="oee-in"
+									id="oee_p"
+									value="90"
+									min="0"
+									max="100"
+									oninput="calcOEE()" />
+							</div>
+							<div>
+								<label
+									style="
+										font-size: 10px;
+										color: var(--t2);
+										display: block;
+										margin-bottom: 2px;
+									"
+									>Quality%</label
+								>
+								<input
+									type="number"
+									class="oee-in"
+									id="oee_q"
+									value="98"
+									min="0"
+									max="100"
+									oninput="calcOEE()" />
+							</div>
+							<div class="mc info" style="padding: 8px">
+								<div class="mc-v" id="oee_val">78%</div>
+								<div class="mc-l">
+									OEE<br /><span style="font-size: 8px">≥85% WC</span>
+								</div>
+							</div>
+						</div>
+						<div id="ov_manhour" style="font-size: 11px"></div>
+					</div>
+					<!-- Issues -->
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--red-m)"></span
+							><span data-i18n="ct_issues">Sự kiện / Vấn đề</span>
+						</div>
+						<div id="issues_list"></div>
+						<div
+							style="display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap">
+							<select id="issue_type" style="font-size: 10px; width: 110px">
+								<option value="⚠">⚠ Sự cố máy</option>
+								<option value="👷">👷 Nhân sự</option>
+								<option value="📦">📦 Nguyên liệu</option>
+								<option value="❌">❌ NG</option>
+								<option value="🔧">🔧 Bảo trì</option>
+								<option value="ℹ">ℹ Khác</option>
+							</select>
+							<input
+								type="text"
+								id="issue_txt"
+								placeholder="Nội dung..."
+								class="inp"
+								style="flex: 1; font-size: 11px; min-width: 80px" />
+							<input
+								type="date"
+								id="issue_date"
+								class="inp"
+								style="width: 115px; font-size: 10px" />
+							<button class="btn grn sm" onclick="addIssue()">+ Thêm</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══ KẾ HOẠCH ═══ -->
+			<div id="tab-plan" class="panel">
+				<div class="card" style="padding: 9px 14px; margin-bottom: 10px">
+					<div
+						style="
+							display: flex;
+							gap: 6px;
+							align-items: center;
+							flex-wrap: wrap;
+						">
+						<input
+							type="month"
+							id="plan_month"
+							value="2026-06"
+							class="inp"
+							style="font-size: 11px"
+							onchange="
+								delete _planLoadedMonths[this.value];
+								buildPlanTable();
+								saveUIState();
+							" />
+						<select
+							id="plan_series"
+							onchange="planFilterChanged()"
+							class="always-editable"
+							style="font-size: 11px">
+							<option value="ALL">Tất cả series</option>
+							<option value="MB">MB</option>
+							<option value="NCA">NCA</option>
+							<option value="CG">CG</option>
+						</select>
+						<select
+							id="plan_sku"
+							style="font-size: 11px; display: none"
+							onchange="planSkuChanged()"
+							class="always-editable">
+							<option value="ALL">Mọi mã</option>
+						</select>
+						<select
+							id="plan_sort"
+							onchange="
+								buildPlanTable();
+								saveUIState();
+							"
+							style="font-size: 11px"
+							class="always-editable">
+							<option value="series">Nhóm theo Series</option>
+							<option value="code">Mã SP (A-Z)</option>
+							<option value="pct_desc">% Đạt (cao→thấp)</option>
+						</select>
+						<select id="plan_view" onchange="buildPlanTable()">
+							<option value="sku">Theo Mã SP</option>
+							<option value="kotei">Theo Công đoạn</option>
+						</select>
+						<div style="width: 1px; height: 18px; background: var(--bdr)"></div>
+						<button
+							class="btn sm pri"
+							onclick="savePlan()"
+							data-i18n="plan_save">
+							💾 Lưu KH/TT
+						</button>
+						<button
+							class="btn sm"
+							onclick="exportPlanXLSX()"
+							data-i18n="plan_export">
+							📊 Export XLSX
+						</button>
+						<label
+							class="btn sm"
+							style="cursor: pointer; margin: 0"
+							data-i18n="plan_import"
+							>📂 Import CSV
+							<input
+								type="file"
+								id="csv_inp"
+								accept=".csv"
+								style="display: none"
+								onchange="importPlanCSV(this)"
+						/></label>
+						<button
+							class="btn sm"
+							onclick="downloadTemplate('plan')"
+							data-i18n="plan_tpl">
+							📄 Template
+						</button>
+						<button
+							class="btn sm"
+							onclick="fillKHModal()"
+							data-i18n="plan_set_kh">
+							🔢 Set KH
+						</button>
+						<button
+							class="btn sm"
+							onclick="bulkTTModal()"
+							data-i18n="plan_bulk_tt">
+							✏️ Nhập TT loạt
+						</button>
+						<button
+							class="btn sm"
+							onclick="showMonthArchive()"
+							data-i18n="plan_history">
+							📚 Lịch sử
+						</button>
+						<button
+							class="btn sm"
+							onclick="showPlanSummary()"
+							data-i18n="plan_summary">
+							📊 Tóm tắt
+						</button>
+						<button
+							class="btn sm grn"
+							onclick="addSKUModal()"
+							data-i18n="plan_add_sku">
+							➕ Thêm mã
+						</button>
+						<button
+							class="btn sm red"
+							onclick="clearMonthData()"
+							data-i18n="plan_clear">
+							🗑 Xóa tháng
+						</button>
+						<span
+							id="plan_save_ts"
+							style="
+								margin-left: auto;
+								font-size: 9px;
+								color: var(--t3);
+							"></span>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 12px;
+							font-size: 10px;
+							margin-top: 7px;
+							flex-wrap: wrap;
+							color: var(--t2);
+						">
+						<span
+							><span
+								style="
+									display: inline-block;
+									width: 10px;
+									height: 10px;
+									background: #e8f4fd;
+									border: 1px solid #bfdbfe;
+									border-radius: 2px;
+									margin-right: 3px;
+									vertical-align: middle;
+								"></span
+							>計画 KH</span
+						>
+						<span
+							><span
+								style="
+									display: inline-block;
+									width: 10px;
+									height: 10px;
+									background: #fffde7;
+									border: 1px solid #fde68a;
+									border-radius: 2px;
+									margin-right: 3px;
+									vertical-align: middle;
+								"></span
+							>実際 TT</span
+						>
+						<span
+							><span
+								style="
+									display: inline-block;
+									width: 10px;
+									height: 10px;
+									background: #dcfce7;
+									border-radius: 2px;
+									margin-right: 3px;
+									vertical-align: middle;
+								"></span
+							>≥90% ✓</span
+						>
+						<span
+							><span
+								style="
+									display: inline-block;
+									width: 10px;
+									height: 10px;
+									background: #fef2f2;
+									border-radius: 2px;
+									margin-right: 3px;
+									vertical-align: middle;
+								"></span
+							>&lt;90%</span
+						>
+						<span
+							><span
+								style="
+									display: inline-block;
+									width: 10px;
+									height: 10px;
+									background: #f3f4f6;
+									border: 1px solid #d1d5db;
+									border-radius: 2px;
+									margin-right: 3px;
+									vertical-align: middle;
+								"></span
+							>T7/CN 休</span
+						>
+					</div>
+				</div>
+				<div class="card" style="padding: 0; overflow: hidden">
+					<div
+						style="
+							display: flex;
+							align-items: center;
+							padding: 6px 12px;
+							background: var(--navy);
+							cursor: pointer;
+						"
+						onclick="togglePlanTable(this)">
+						<span
+							style="
+								font-size: 10px;
+								font-weight: 700;
+								color: #fff;
+								letter-spacing: 0.3px;
+								text-transform: uppercase;
+								flex: 1;
+							"
+							>📋 Bảng kế hoạch / 計画実績表</span
+						>
+						<button
+							id="plan_table_toggle"
+							style="
+								background: none;
+								border: none;
+								color: #aac4e8;
+								font-size: 11px;
+								cursor: pointer;
+								padding: 0;
+							"
+							title="Thu gọn bảng">
+							▲
+						</button>
+					</div>
+					<div id="plan_table_body" class="plan-scroll">
+						<table class="pt" id="plan_table">
+							<thead id="plan_thead"></thead>
+							<tbody id="plan_tbody"></tbody>
+							<tfoot id="plan_tfoot"></tfoot>
+						</table>
+					</div>
+					<!-- end plan_table_body -->
+				</div>
+				<div class="g2">
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--blue)"></span>KH vs TT
+							theo ngày
+							<span
+								id="plan_chart_title"
+								style="margin-left: 6px; font-size: 9.5px; color: var(--t3)"
+								>Tất cả</span
+							>
+							<span style="margin-left: auto; font-size: 9px; color: var(--t3)"
+								>Tự động theo bộ lọc bảng</span
+							>
+						</div>
+						<div style="position: relative; height: 180px">
+							<canvas id="planChart"></canvas>
+						</div>
+					</div>
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--grn-m)"></span>Lũy kế
+						</div>
+						<div style="position: relative; height: 180px">
+							<canvas id="cumChart"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══ CTSX (CHỈ THỊ SẢN XUẤT / ĐƠN HÀNG) — Step 5a ═══ -->
+			<div id="tab-ctsx" class="panel">
+				<div class="card" style="padding: 9px 14px; margin-bottom: 10px">
+					<div class="ct">
+						<span class="dot" style="background: var(--navy)"></span>Chỉ thị Sản xuất (CTSX) — Tiến độ theo đơn hàng
+						<div style="margin-left: auto; display: flex; gap: 5px">
+							<button class="btn sm grn" id="ctsx_add_btn" style="display: none" onclick="addCTSXRow()">+ Thêm CTSX</button>
+							<button class="btn sm pri" onclick="saveCTSXAll()">💾 Lưu</button>
+							<button class="btn sm" onclick="buildCTSXTable()">🔄 Tải lại</button>
+						</div>
+					</div>
+					<div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px">
+						<input type="month" id="ctsx_month" value="2026-06" class="inp always-editable" style="font-size: 11px" onchange="buildCTSXTable()" />
+						<select id="ctsx_series" class="always-editable" style="font-size: 11px" onchange="ctsxFilterChanged()">
+							<option value="ALL">Tất cả series</option>
+							<option value="MB">MB</option>
+							<option value="NCA">NCA</option>
+							<option value="CG">CG</option>
+						</select>
+						<select id="ctsx_sku" class="always-editable" style="font-size: 11px; display: none" onchange="buildCTSXTable()">
+							<option value="ALL">Mọi mã</option>
+						</select>
+						<select id="ctsx_status" class="always-editable" style="font-size: 11px" onchange="buildCTSXTable()">
+							<option value="ALL">Mọi trạng thái</option>
+							<option value="pending">⏳ Chờ</option>
+							<option value="running">🔵 Đang chạy</option>
+							<option value="done">✅ Hoàn thành</option>
+						</select>
+						<span id="ctsx_summary" style="font-size: 10px; color: var(--t3); margin-left: 6px"></span>
+					</div>
+				</div>
+				<div class="card" style="padding: 12px">
+					<div style="overflow-x: auto">
+						<table id="ctsx_table" style="width: 100%; font-size: 11px; border-collapse: collapse">
+							<thead>
+								<tr>
+									<th>Mã đơn (CTSX)</th>
+									<th>Mã SP</th>
+									<th>KH (pcs)</th>
+									<th>TT (pcs)</th>
+									<th>Tiến độ</th>
+									<th>Ngày phát lệnh</th>
+									<th>Hạn giao</th>
+									<th>Ghi chú</th>
+									<th>Bản ghi TT</th>
+								</tr>
+							</thead>
+							<tbody id="ctsx_body"></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══ CYCLE/PULSE ═══ -->
+			<div id="tab-pulse" class="panel">
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--org-m)"></span>Cycle Time
+						Database
+						<div style="margin-left: auto; display: flex; gap: 5px">
+							<button class="btn sm pri" onclick="saveCTData()">
+								💾 Lưu CT
+							</button>
+							<button class="btn sm" onclick="resetCT()">↩ Reset</button>
+						</div>
+					</div>
+					<p style="font-size: 10px; color: var(--t3); margin-bottom: 7px">
+						Nhập CT thực đo (sec/pcs). Trống = dùng mặc định. 移動 = thời gian
+						di chuyển. Bật Edit Mode để sửa.
+					</p>
+					<div style="overflow-x: auto">
+						<table id="ct_table" style="font-size: 10px"></table>
+					</div>
+				</div>
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--blue)"></span>Pulse
+						Diagram
+						<span
+							id="rt_clock"
+							style="
+								margin-left: auto;
+								font-family: var(--mono);
+								font-size: 11px;
+								font-weight: 700;
+								color: var(--navy);
+							"></span>
+					</div>
+					<div id="rt_summary" style="margin-bottom: 10px"></div>
+					<div
+						style="
+							display: flex;
+							gap: 10px;
+							align-items: center;
+							flex-wrap: wrap;
+							margin-bottom: 9px;
+						">
+						<label style="font-size: 11px; font-weight: 600"
+							>Mã SP:
+							<select
+								id="pulse_sku"
+								style="margin-left: 4px"
+								onchange="drawPulse()"></select
+						></label>
+						<label style="font-size: 11px"
+							>Bắt đầu:
+							<input
+								type="time"
+								id="pulse_start"
+								value="08:00"
+								class="inp"
+								style="width: 76px; margin-left: 4px"
+								oninput="drawPulse()"
+						/></label>
+						<label style="font-size: 11px"
+							>Kết thúc:
+							<input
+								type="time"
+								id="pulse_end"
+								value="16:30"
+								class="inp"
+								style="width: 76px; margin-left: 4px"
+								oninput="drawPulse()"
+						/></label>
+						<label style="font-size: 11px"
+							>Nghỉ từ:
+							<input
+								type="time"
+								id="break_s"
+								value="11:45"
+								class="inp"
+								style="width: 76px; margin-left: 4px"
+								oninput="drawPulse()"
+						/></label>
+						<label style="font-size: 11px"
+							>Đến:
+							<input
+								type="time"
+								id="break_e"
+								value="12:30"
+								class="inp"
+								style="width: 76px; margin-left: 4px"
+								oninput="drawPulse()"
+						/></label>
+						<label style="font-size: 11px"
+							><input
+								type="checkbox"
+								id="show_batch"
+								checked
+								onchange="drawPulse()" />
+							Batch</label
+						>
+						<label style="font-size: 11px"
+							><input
+								type="checkbox"
+								id="show_move"
+								checked
+								onchange="drawPulse()" />
+							Di chuyển</label
+						>
+					</div>
+					<canvas id="pulseCanvas"></canvas>
+					<div id="plegend" class="leg-row" style="margin-top: 7px"></div>
+				</div>
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--navy)"></span>Cascade —
+						Tổng hợp cuối ca
+					</div>
+					<table>
+						<thead>
+							<tr>
+								<th>Công đoạn</th>
+								<th>CT adj(s)</th>
+								<th>移動(s)</th>
+								<th>Máy</th>
+								<th>Raw/ca</th>
+								<th>Batch</th>
+								<th>✓ Effective</th>
+								<th>⏳ WIP</th>
+								<th>% vs BN</th>
+								<th>Trạng thái</th>
+							</tr>
+						</thead>
+						<tbody id="pulse_body"></tbody>
+						<tfoot id="pulse_foot"></tfoot>
+					</table>
+				</div>
+			</div>
+
+			<!-- ═══ HEATMAP ═══ -->
+			<div id="tab-heatmap" class="panel">
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--grn-m)"></span>Heatmap %
+						Đạt KH theo ngày × mã SP
+						<span
+							style="
+								margin-left: 6px;
+								font-size: 9px;
+								color: var(--t3);
+								font-weight: 400;
+								text-transform: none;
+							">
+							🟩≥90% 🟨70-89% 🟥&lt;70% ⬜Chưa nhập
+						</span>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 8px;
+							margin-bottom: 9px;
+							flex-wrap: wrap;
+							align-items: center;
+						">
+						<input
+							type="month"
+							id="hm_month"
+							value="2026-06"
+							class="inp"
+							style="font-size: 11px"
+							onchange="buildHeatmap()" />
+						<select id="hm_series" onchange="buildHeatmap()">
+							<option value="ALL">Tất cả</option>
+							<option value="MB">MB</option>
+							<option value="NCA">NCA</option>
+							<option value="CG">CG</option>
+						</select>
+					</div>
+					<div style="overflow-x: auto" id="hm_content"></div>
+				</div>
+			</div>
+
+			<!-- ═══ SO SÁNH ĐA THÁNG ═══ -->
+			<div id="tab-compare" class="panel">
+				<!-- Filter bar -->
+				<div class="card" style="padding: 9px 14px; margin-bottom: 0">
+					<div
+						style="
+							display: flex;
+							gap: 8px;
+							align-items: center;
+							flex-wrap: wrap;
+						">
+						<span
+							style="font-size: 10px; font-weight: 700; color: var(--t2)"
+							data-i18n="lbl_add_month"
+							>📅 Tháng so sánh (tối đa 6):</span
+						>
+						<div
+							id="cmp_month_tags"
+							style="display: flex; gap: 4px; flex-wrap: wrap; flex: 1"></div>
+						<input
+							type="month"
+							id="cmp_add_month"
+							class="inp always-editable"
+							style="font-size: 10px; padding: 2px 5px; width: 130px" />
+						<button
+							class="btn sm grn"
+							onclick="cmpAddMonth()"
+							data-i18n="btn_add_month">
+							+ Thêm
+						</button>
+						<button
+							class="btn sm"
+							onclick="cmpClearAll()"
+							data-i18n="btn_clear_months">
+							✕ Xóa hết
+						</button>
+						<div style="width: 1px; height: 18px; background: var(--bdr)"></div>
+						<select
+							id="cmp_series"
+							class="always-editable"
+							style="font-size: 11px"
+							onchange="buildCompare()">
+							<option value="ALL">Tất cả</option>
+							<option value="MB">MB</option>
+							<option value="NCA">NCA</option>
+							<option value="CG">CG</option>
+						</select>
+						<select
+							id="cmp_sku"
+							class="always-editable"
+							style="font-size: 11px; display: none"
+							onchange="buildCompare()">
+							<option value="ALL">Mọi mã</option>
+						</select>
+						<div style="width: 1px; height: 18px; background: var(--bdr)"></div>
+						<button
+							class="btn sm"
+							id="cmp_view_trend"
+							onclick="setCmpView('trend')"
+							style="background: var(--navy); color: #fff">
+							📈 Trend
+						</button>
+						<button
+							class="btn sm"
+							id="cmp_view_bar"
+							onclick="setCmpView('bar')">
+							📊 Cột
+						</button>
+						<button
+							class="btn sm"
+							id="cmp_view_table"
+							onclick="setCmpView('table')">
+							📋 Bảng
+						</button>
+					</div>
+				</div>
+
+				<!-- KPI summary strip -->
+				<div
+					id="cmp_kpi_strip"
+					style="
+						display: flex;
+						gap: 6px;
+						flex-wrap: wrap;
+						padding: 6px 0 2px;
+					"></div>
+
+				<!-- Trend view -->
+				<div id="cmp_view_trend_panel">
+					<div class="g2">
+						<div class="card" style="padding: 12px">
+							<div class="ct">
+								<span class="dot" style="background: var(--blue)"></span>Lũy kế
+								TT theo tháng
+							</div>
+							<div style="position: relative; height: 200px">
+								<canvas id="cmpCumChart"></canvas>
+							</div>
+						</div>
+						<div class="card" style="padding: 12px">
+							<div class="ct">
+								<span class="dot" style="background: var(--grn-m)"></span>% Đạt
+								KH theo tháng
+							</div>
+							<div style="position: relative; height: 200px">
+								<canvas id="cmpPctChart"></canvas>
+							</div>
+						</div>
+					</div>
+					<div class="g2">
+						<div class="card" style="padding: 12px">
+							<div class="ct">
+								<span class="dot" style="background: var(--red-m)"></span>NG
+								trend đa tháng
+							</div>
+							<div style="position: relative; height: 180px">
+								<canvas id="cmpNGChart"></canvas>
+							</div>
+						</div>
+						<div class="card" style="padding: 12px">
+							<div class="ct">
+								<span class="dot" style="background: var(--amb-m)"></span>Ngày
+								nghỉ nhân sự
+							</div>
+							<div style="position: relative; height: 180px">
+								<canvas id="cmpLeaveChart"></canvas>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Bar view -->
+				<div id="cmp_view_bar_panel" style="display: none">
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--blue)"></span>Sản lượng
+							TT — So sánh theo mã SP
+						</div>
+						<div style="position: relative; height: 260px">
+							<canvas id="cmpBarChart"></canvas>
+						</div>
+					</div>
+					<div class="card" style="padding: 12px; margin-top: 0">
+						<div class="ct">
+							<span class="dot" style="background: var(--org-m)"></span>% Đạt KH
+							— So sánh theo mã SP
+						</div>
+						<div style="position: relative; height: 240px">
+							<canvas id="cmpBarPctChart"></canvas>
+						</div>
+					</div>
+				</div>
+
+				<!-- Table view -->
+				<div id="cmp_view_table_panel" style="display: none">
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--navy)"></span>Bảng tóm
+							tắt đa tháng
+						</div>
+						<div style="overflow-x: auto">
+							<table
+								id="cmp_table"
+								style="
+									font-size: 10px;
+									min-width: 100%;
+									border-collapse: collapse;
+								"></table>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div id="tab-ca3" class="panel">
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--org-m)"></span>Cài đặt 3
+						Ca
+					</div>
+					<div class="g3">
+						<div class="ca-card ca1-c">
+							<b
+								style="
+									font-size: 11px;
+									color: var(--blue);
+									display: block;
+									margin-bottom: 7px;
+								"
+								>Ca 1</b
+							>
+							<div style="display: flex; flex-wrap: wrap; gap: 5px">
+								<label style="font-size: 10px"
+									>Bắt đầu<br /><input
+										type="time"
+										value="06:00"
+										id="ca1_s"
+										class="pi"
+										style="width: 76px; margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+								<label style="font-size: 10px"
+									>Kết thúc<br /><input
+										type="time"
+										value="14:00"
+										id="ca1_e"
+										class="pi"
+										style="width: 76px; margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+								<label style="font-size: 10px"
+									>KH (pcs)<br /><input
+										type="number"
+										value="400"
+										id="ca1_kh"
+										class="pi"
+										style="margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+							</div>
+						</div>
+						<div class="ca-card ca2-c">
+							<b
+								style="
+									font-size: 11px;
+									color: var(--org-m);
+									display: block;
+									margin-bottom: 7px;
+								"
+								>Ca 2</b
+							>
+							<div style="display: flex; flex-wrap: wrap; gap: 5px">
+								<label style="font-size: 10px"
+									>Bắt đầu<br /><input
+										type="time"
+										value="14:00"
+										id="ca2_s"
+										class="pi"
+										style="width: 76px; margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+								<label style="font-size: 10px"
+									>Kết thúc<br /><input
+										type="time"
+										value="22:00"
+										id="ca2_e"
+										class="pi"
+										style="width: 76px; margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+								<label style="font-size: 10px"
+									>KH (pcs)<br /><input
+										type="number"
+										value="400"
+										id="ca2_kh"
+										class="pi"
+										style="margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+							</div>
+						</div>
+						<div class="ca-card ca3-c">
+							<b
+								style="
+									font-size: 11px;
+									color: var(--grn-m);
+									display: block;
+									margin-bottom: 7px;
+								"
+								>Ca 3</b
+							>
+							<div style="display: flex; flex-wrap: wrap; gap: 5px">
+								<label style="font-size: 10px"
+									>Bắt đầu<br /><input
+										type="time"
+										value="22:00"
+										id="ca3_s"
+										class="pi"
+										style="width: 76px; margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+								<label style="font-size: 10px"
+									>Kết thúc<br /><input
+										type="time"
+										value="06:00"
+										id="ca3_e"
+										class="pi"
+										style="width: 76px; margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+								<label style="font-size: 10px"
+									>KH (pcs)<br /><input
+										type="number"
+										value="400"
+										id="ca3_kh"
+										class="pi"
+										style="margin-top: 2px"
+										oninput="updateCa()"
+								/></label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--navy)"></span>Năng lực &
+						Thực tích
+					</div>
+					<div id="ca_mc" class="mc-g" style="margin-bottom: 10px"></div>
+					<table>
+						<thead>
+							<tr>
+								<th>Ca</th>
+								<th>Giờ</th>
+								<th>KH</th>
+								<th>先付</th>
+								<th>引抜</th>
+								<th>切断</th>
+								<th>矯正</th>
+								<th>洗浄</th>
+								<th>Tổng TT</th>
+								<th>%</th>
+							</tr>
+						</thead>
+						<tbody id="ca_body"></tbody>
+						<tfoot id="ca_foot"></tfoot>
+					</table>
+				</div>
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--blue)"></span>Biểu đồ Ca
+					</div>
+					<div style="position: relative; height: 180px">
+						<canvas id="caChart"></canvas>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══ NHÂN SỰ ═══ -->
+			<div id="tab-worker" class="panel">
+				<div
+					style="
+						display: flex;
+						gap: 6px;
+						margin-bottom: 9px;
+						flex-wrap: wrap;
+						align-items: center;
+					">
+					<button class="btn sm pri" onclick="saveWorkers()">
+						💾 Lưu nhân sự
+					</button>
+					<button class="btn sm" onclick="exportWorkersCSV()">
+						📥 Export CSV
+					</button>
+					<label class="btn sm" style="cursor: pointer; margin: 0"
+						>📂 Import CSV
+						<input
+							type="file"
+							id="worker_inp"
+							accept=".csv"
+							style="display: none"
+							onchange="importWorkersCSV(this)"
+					/></label>
+					<button
+						class="btn sm grn"
+						id="add_worker_btn"
+						onclick="addWorker()"
+						style="display: none"
+						data-i18n="btn_add_worker">
+						+ Thêm NV
+					</button>
+					<select
+						id="wk_ca_filter"
+						class="always-editable"
+						style="font-size: 10px; margin-left: auto"
+						onchange="buildWorkerCards()">
+						<option value="ALL">Tất cả ca</option>
+						<option value="Ca hành chính">Ca Hành chính</option>
+						<option value="Ca1">Ca 1</option>
+						<option value="Ca2">Ca 2</option>
+						<option value="Ca3">Ca 3</option>
+					</select>
+					<span
+						id="worker_save_ts"
+						style="font-size: 9px; color: var(--t3)"></span>
+				</div>
+
+				<!-- COMPACT LIST (default) -->
+				<div class="card" style="padding: 0; margin-bottom: 10px">
+					<div
+						style="
+							display: flex;
+							align-items: center;
+							padding: 8px 12px;
+							background: var(--navy);
+							cursor: pointer;
+						"
+						onclick="toggleWorkerList(this)">
+						<span
+							style="
+								font-size: 10px;
+								font-weight: 700;
+								color: #fff;
+								letter-spacing: 0.3px;
+								flex: 1;
+							"
+							>👷 DANH SÁCH NHÂN VIÊN</span
+						>
+						<span
+							id="wk_count"
+							style="font-size: 9px; color: #aac4e8; margin-right: 8px"></span>
+						<button
+							style="
+								background: none;
+								border: none;
+								color: #aac4e8;
+								font-size: 11px;
+								cursor: pointer;
+							"
+							id="wk_list_toggle">
+							▲
+						</button>
+					</div>
+					<div
+						id="worker_list_compact"
+						style="max-height: 260px; overflow-y: auto; overflow-x: hidden">
+						<!-- compact rows built by buildWorkerListCompact() -->
+					</div>
+				</div>
+
+				<!-- DETAIL CARDS (hidden by default, click row to expand) -->
+				<!--div id="worker_cards" style="display: none"></div>
+
+				<!-- Bảng ngày nghỉ -->
+				<div class="card" style="margin-bottom: 10px">
+					<div
+						class="ct"
+						onclick="
+							toggleSection(
+								'attend_body',
+								document.getElementById('attend_toggle'),
+							)
+						"
+						style="cursor: pointer">
+						<span class="dot" style="background: var(--amb-m)"></span>
+						<span data-i18n="ct_attend">📅 Bảng ngày nghỉ tháng</span>
+						<div
+							style="
+								margin-left: auto;
+								display: flex;
+								gap: 5px;
+								align-items: center;
+							">
+							<input
+								type="month"
+								id="attend_month"
+								value="2026-06"
+								class="inp always-editable"
+								style="font-size: 10px; padding: 2px 5px"
+								onchange="buildAttendTable()" />
+							<button class="btn sm pri" onclick="saveAttend()">💾 Lưu</button>
+							<button
+								id="attend_toggle"
+								style="
+									background: none;
+									border: none;
+									color: var(--t3);
+									font-size: 10px;
+									cursor: pointer;
+								">
+								▼
+							</button>
+						</div>
+					</div>
+					<div id="attend_body" style="display: none">
+						<div style="overflow-x: auto; max-height: 350px; overflow-y: auto">
+							<table
+								id="attend_table"
+								style="font-size: 10px; min-width: 100%"></table>
+						</div>
+						<div
+							style="
+								font-size: 9px;
+								color: var(--t3);
+								margin-top: 5px;
+								padding: 0 2px;
+							">
+							<span
+								style="
+									background: #fecaca;
+									padding: 1px 5px;
+									border-radius: 3px;
+									margin-right: 5px;
+								"
+								>1 = Nghỉ</span
+							>
+							<span
+								style="
+									background: #f0fdf4;
+									padding: 1px 5px;
+									border-radius: 3px;
+									margin-right: 5px;
+								"
+								>0 = Đi làm</span
+							>
+							<span
+								style="
+									background: #f3f4f6;
+									padding: 1px 5px;
+									border-radius: 3px;
+								"
+								>休 = T7/CN</span
+							>
+						</div>
+					</div>
+				</div>
+
+				<div class="g2">
+					<div class="card">
+						<div class="ct">
+							<span class="dot" style="background: var(--navy)"></span>Phân bổ
+							Kotei
+						</div>
+						<div
+							id="worker_kotei"
+							style="
+								display: grid;
+								grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+								gap: 8px;
+							"></div>
+					</div>
+					<div class="card">
+						<div class="ct">
+							<span class="dot" style="background: var(--pur-m)"></span>Skill
+							Matrix
+						</div>
+						<div style="overflow-x: auto">
+							<table id="skill_matrix"></table>
+						</div>
+					</div>
+				</div>
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--red-m)"></span>Vi phạm
+						nội quy
+					</div>
+					<div id="viol_list"></div>
+					<div
+						style="display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap">
+						<select id="viol_worker" style="width: 110px">
+							<option value="">Chọn NV...</option>
+						</select>
+						<select id="viol_type" style="width: 150px">
+							<option>Đi trễ/Về sớm</option>
+							<option>Không đeo BHLĐ</option>
+							<option>Sử dụng điện thoại</option>
+							<option>Vi phạm vệ sinh</option>
+							<option>Vi phạm an toàn</option>
+							<option>Khác</option>
+						</select>
+						<input
+							type="date"
+							id="viol_date"
+							class="inp"
+							style="width: 115px; font-size: 10px" />
+						<input
+							type="text"
+							id="viol_note"
+							placeholder="Ghi chú..."
+							class="inp"
+							style="flex: 1; font-size: 10px" />
+						<button class="btn red sm" onclick="addViol()">+ Ghi nhận</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══ NG/QC ═══ -->
+			<div id="tab-quality" class="panel">
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--red-m)"></span>Nhập NG /
+						Non-conformance
+						<div style="margin-left: auto; display: flex; gap: 5px">
+							<button class="btn sm pri" onclick="saveQuality()">💾 Lưu</button>
+							<button class="btn sm grn" onclick="addNGRow()">
+								+ Thêm dòng
+							</button>
+						</div>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 7px;
+							margin-bottom: 9px;
+							flex-wrap: wrap;
+							align-items: center;
+						">
+						<input
+							type="month"
+							id="ng_month"
+							value="2026-06"
+							class="inp always-editable"
+							style="font-size: 11px"
+							onchange="buildNGTable()" />
+						<select
+							id="ng_filter_ser"
+							class="always-editable"
+							onchange="ngFilterChanged()">
+							<option value="ALL">Tất cả Series</option>
+							<option value="MB">MB</option>
+							<option value="NCA">NCA</option>
+							<option value="CG">CG</option>
+						</select>
+						<select
+							id="ng_filter_sku"
+							class="always-editable"
+							onchange="buildNGCharts()"
+							style="display: none">
+							<option value="ALL">Mọi mã</option>
+						</select>
+						<span style="font-size: 10px; color: var(--t3); margin-left: 8px"
+							>💡 Giải thích: <b>Trend</b>=NG theo ngày | <b>Pareto</b>=nguyên
+							nhân chính (80/20) | <b>Pie</b>=phân bổ series | <b>Bar</b>=NG per
+							mã SP</span
+						>
+					</div>
+					<div style="overflow-x: auto">
+						<table id="ng_input_table">
+							<thead>
+								<tr>
+									<th>Ngày</th>
+									<th>Mã SP</th>
+									<th>Công đoạn</th>
+									<th>Mã lỗi</th>
+									<th>Loại lỗi</th>
+									<th>Số lượng NG</th>
+									<th>Nguyên nhân</th>
+									<th>Hành động</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody id="ng_body"></tbody>
+						</table>
+					</div>
+				</div>
+				<div class="g2">
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--red-m)"></span>📈 NG xu
+							hướng theo ngày
+							<span
+								style="
+									margin-left: 6px;
+									font-size: 9px;
+									color: var(--t3);
+									font-weight: 400;
+									text-transform: none;
+								"
+								>Cột = số NG/ngày, đường = trend</span
+							>
+						</div>
+						<div style="position: relative; height: 190px">
+							<canvas id="ng_trend"></canvas>
+						</div>
+					</div>
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--org-m)"></span>📊
+							Pareto nguyên nhân NG
+							<span
+								style="
+									margin-left: 6px;
+									font-size: 9px;
+									color: var(--t3);
+									font-weight: 400;
+									text-transform: none;
+								"
+								>Tìm 20% nguyên nhân → 80% NG</span
+							>
+						</div>
+						<div style="position: relative; height: 190px">
+							<canvas id="ng_pareto"></canvas>
+						</div>
+					</div>
+				</div>
+				<div class="g2">
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--blue)"></span>🥧 Phân
+							bổ NG theo Series
+							<span
+								style="
+									margin-left: 6px;
+									font-size: 9px;
+									color: var(--t3);
+									font-weight: 400;
+									text-transform: none;
+								"
+								>MB / NCA / CG</span
+							>
+						</div>
+						<div style="position: relative; height: 190px">
+							<canvas id="ng_pie_chart"></canvas>
+						</div>
+					</div>
+					<div class="card" style="padding: 12px">
+						<div class="ct">
+							<span class="dot" style="background: var(--pur-m)"></span>🏆 NG
+							per mã SP (top 10)
+							<span
+								style="
+									margin-left: 6px;
+									font-size: 9px;
+									color: var(--t3);
+									font-weight: 400;
+									text-transform: none;
+								"
+								>Mã nào có nhiều NG nhất</span
+							>
+						</div>
+						<div style="position: relative; height: 190px">
+							<canvas id="ng_bysku_chart"></canvas>
+						</div>
+					</div>
+				</div>
+				<!-- Quality Code Table -->
+				<div class="card">
+					<div
+						class="ct"
+						style="cursor: pointer; user-select: none"
+						onclick="toggleNGPanel()">
+						<span class="dot" style="background: #0000cc"></span>
+						Quality Code Table — Bảng mã lỗi
+						<span
+							id="ng_panel_icon"
+							style="
+								margin-left: 6px;
+								font-size: 10px;
+								color: var(--t3);
+								font-weight: 400;
+							"
+							>▶ Mở rộng</span
+						>
+						<span
+							style="
+								margin-left: auto;
+								font-size: 9px;
+								color: var(--t3);
+								font-weight: 400;
+								text-transform: none;
+							"
+							>Bật Edit Mode để sửa inline</span
+						>
+					</div>
+					<div id="ng_panel" style="display: none">
+						<div id="ng_codes_wrap"></div>
+					</div>
+				</div>
+
+				<!-- NG Multi-month Search & Compare -->
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--navy)"></span>🔍 Tra cứu
+						& So sánh NG đa tháng
+						<button
+							class="btn sm"
+							onclick="ngSearchRun()"
+							style="margin-left: auto">
+							🔍 Tìm kiếm
+						</button>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 8px;
+							flex-wrap: wrap;
+							align-items: center;
+							margin-bottom: 10px;
+						">
+						<div style="display: flex; gap: 4px; align-items: center">
+							<label style="font-size: 9px; color: var(--t2); font-weight: 700"
+								>Từ tháng:</label
+							>
+							<input
+								type="month"
+								id="ng_from"
+								class="inp always-editable"
+								style="font-size: 10px; width: 120px" />
+						</div>
+						<div style="display: flex; gap: 4px; align-items: center">
+							<label style="font-size: 9px; color: var(--t2); font-weight: 700"
+								>Đến tháng:</label
+							>
+							<input
+								type="month"
+								id="ng_to"
+								class="inp always-editable"
+								style="font-size: 10px; width: 120px" />
+						</div>
+						<select
+							id="ng_search_ser"
+							class="always-editable"
+							style="font-size: 10px">
+							<option value="ALL">Tất cả Series</option>
+							<option value="MB">MB</option>
+							<option value="NCA">NCA</option>
+							<option value="CG">CG</option>
+						</select>
+						<select
+							id="ng_search_sku"
+							class="always-editable"
+							style="font-size: 10px; display: none">
+							<option value="ALL">Mọi mã</option>
+						</select>
+						<select
+							id="ng_search_kotei"
+							class="always-editable"
+							style="font-size: 10px">
+							<option value="ALL">Tất cả công đoạn</option>
+							<option value="引抜">引抜</option>
+							<option value="切断">切断</option>
+							<option value="矯正">矯正</option>
+							<option value="洗浄">洗浄</option>
+							<option value="検査">検査</option>
+						</select>
+						<input
+							type="text"
+							id="ng_search_kw"
+							class="inp always-editable"
+							placeholder="Từ khóa nguyên nhân..."
+							style="font-size: 10px; width: 160px" />
+					</div>
+					<!-- Results -->
+					<div id="ng_search_result" style="display: none">
+						<div
+							style="
+								display: grid;
+								grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+								gap: 8px;
+								margin-bottom: 10px;
+							"
+							id="ng_search_kpis"></div>
+						<div style="position: relative; height: 180px; margin-bottom: 10px">
+							<canvas id="ng_multi_chart"></canvas>
+						</div>
+						<div style="overflow-x: auto; max-height: 300px; overflow-y: auto">
+							<table
+								style="width: 100%; font-size: 10px; border-collapse: collapse"
+								id="ng_search_table">
+								<thead style="position: sticky; top: 0; background: #f1f5f9">
+									<tr>
+										<th
+											style="
+												padding: 5px 8px;
+												text-align: left;
+												border-bottom: 1px solid var(--bdr);
+											">
+											Tháng
+										</th>
+										<th
+											style="
+												padding: 5px 8px;
+												text-align: left;
+												border-bottom: 1px solid var(--bdr);
+											">
+											Ngày
+										</th>
+										<th
+											style="
+												padding: 5px 8px;
+												border-bottom: 1px solid var(--bdr);
+											">
+											Mã SP
+										</th>
+										<th
+											style="
+												padding: 5px 8px;
+												border-bottom: 1px solid var(--bdr);
+											">
+											Công đoạn
+										</th>
+										<th
+											style="
+												padding: 5px 8px;
+												border-bottom: 1px solid var(--bdr);
+											">
+											Mã lỗi
+										</th>
+										<th
+											style="
+												padding: 5px 8px;
+												text-align: right;
+												border-bottom: 1px solid var(--bdr);
+											">
+											Qty
+										</th>
+										<th
+											style="
+												padding: 5px 8px;
+												text-align: left;
+												border-bottom: 1px solid var(--bdr);
+											">
+											Nguyên nhân
+										</th>
+									</tr>
+								</thead>
+								<tbody id="ng_search_tbody"></tbody>
+							</table>
+						</div>
+						<div
+							id="ng_search_summary"
+							style="margin-top: 8px; font-size: 10px; color: var(--t3)"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══ SỰ CỐ THIẾT BỊ ═══ -->
+			<div id="tab-incident" class="panel">
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--org-m)"></span>Equipment
+						Incident Reports
+						<div style="margin-left: auto; display: flex; gap: 5px">
+							<button class="btn sm pri" onclick="saveIncidents()">
+								💾 Lưu
+							</button>
+							<button class="btn sm" onclick="exportIncidents()">
+								📥 Export TXT
+							</button>
+							<button
+								class="btn sm grn"
+								id="inc_new_btn"
+								onclick="newIncident()"
+								data-i18n="btn_inc_new">
+								+ Báo cáo mới
+							</button>
+						</div>
+					</div>
+					<div id="inc_list"></div>
+					<!-- Incident editor -->
+					<div
+						id="inc_editor"
+						style="
+							display: none;
+							margin-top: 12px;
+							border-top: 2px solid var(--org-m);
+							padding-top: 12px;
+						">
+						<div
+							style="
+								display: grid;
+								grid-template-columns: 1fr 1fr 1fr 1fr;
+								gap: 8px;
+								margin-bottom: 10px;
+							">
+							<div class="inc-section">
+								<label>Ngày xảy ra</label
+								><input
+									type="date"
+									id="inc_date"
+									class="inp"
+									style="width: 100%" />
+							</div>
+							<div class="inc-section">
+								<label>Thiết bị / Line</label
+								><input
+									type="text"
+									id="inc_machine"
+									class="inp"
+									style="width: 100%"
+									placeholder="VD: 引抜機 #2" />
+							</div>
+							<div class="inc-section">
+								<label>Trạng thái</label>
+								<select id="inc_status" class="inp" style="width: 100%">
+									<option value="open">🔴 Đang xử lý</option>
+									<option value="wip">🟡 Đang theo dõi</option>
+									<option value="closed">🟢 Đã khắc phục</option>
+								</select>
+							</div>
+							<div class="inc-section">
+								<label>Downtime (phút)</label
+								><input
+									type="number"
+									id="inc_dt"
+									class="inp"
+									style="width: 100%"
+									min="0"
+									placeholder="0" />
+							</div>
+						</div>
+						<!-- Main content + right panel side by side -->
+						<div
+							style="
+								display: grid;
+								grid-template-columns: 1fr 280px;
+								gap: 12px;
+							">
+							<div>
+								<div class="inc-section">
+									<label style="color: var(--red-m)"
+										>【異常現象】Hiện tượng bất thường</label
+									>
+									<textarea
+										id="inc_phen"
+										rows="3"
+										placeholder="VD: 制御用単相220V電源喪失..."></textarea>
+								</div>
+								<div class="inc-section">
+									<label style="color: var(--amb-m)"
+										>【確認・調査内容】Kiểm tra & điều tra</label
+									>
+									<textarea
+										id="inc_inv"
+										rows="4"
+										placeholder="QF3 CB TRIP. Kiểm tra 3 hệ thống:&#10;※ Relay, PB, Đèn báo&#10;※ HMI/PLC&#10;※ PSU DC24V"></textarea>
+								</div>
+								<div class="inc-section">
+									<label style="color: var(--blue)"
+										>【対策】Biện pháp xử lý</label
+									>
+									<textarea
+										id="inc_act"
+										rows="3"
+										placeholder="※ Mượn PSU từ line sandblast&#10;※ Kiểm tra DA Module"></textarea>
+								</div>
+								<div class="inc-section">
+									<label style="color: var(--grn-m)">【結果】Kết quả</label>
+									<textarea
+										id="inc_res"
+										rows="3"
+										placeholder="Ngày ... - 16:25 Xác nhận phục hồi..."></textarea>
+								</div>
+								<div
+									style="
+										display: flex;
+										align-items: center;
+										gap: 8px;
+										margin-top: 6px;
+									">
+									<div class="inc-section" style="flex: 1">
+										<label>担当者 / Người xử lý</label>
+										<input
+											type="text"
+											id="inc_hand"
+											class="inp"
+											style="width: 100%"
+											placeholder="Tên kỹ thuật viên..." />
+									</div>
+									<label
+										class="btn sm"
+										style="
+											cursor: pointer;
+											align-self: flex-end;
+											margin-bottom: 0;
+											background: #f1f5f9;
+											border: 1px solid var(--bdr);
+										">
+										📎 Attach Excel<input
+											type="file"
+											accept=".xlsx,.xls,.csv"
+											style="display: none"
+											onchange="incAttachExcel(this)"
+									/></label>
+									<span
+										id="inc_attach_name"
+										style="
+											font-size: 9.5px;
+											color: var(--t3);
+											align-self: flex-end;
+											margin-bottom: 6px;
+										"></span>
+								</div>
+							</div>
+							<!-- Right: photos panel -->
+							<div
+								style="border-left: 1px solid var(--bdr); padding-left: 12px">
+								<div
+									style="
+										font-size: 10px;
+										font-weight: 700;
+										color: var(--t2);
+										margin-bottom: 6px;
+										text-transform: uppercase;
+										letter-spacing: 0.3px;
+									">
+									📷 Hình ảnh mô tả
+								</div>
+								<div
+									id="inc_photos"
+									style="
+										display: flex;
+										flex-direction: column;
+										gap: 6px;
+										min-height: 80px;
+									"></div>
+								<label
+									class="btn sm grn"
+									style="
+										cursor: pointer;
+										width: 100%;
+										text-align: center;
+										margin-top: 6px;
+										display: block;
+									">
+									+ Thêm ảnh<input
+										type="file"
+										accept="image/*"
+										multiple
+										style="display: none"
+										onchange="incAddPhotos(this)"
+								/></label>
+								<div
+									style="font-size: 8.5px; color: var(--t3); margin-top: 5px">
+									JPEG/PNG, tối đa 3 ảnh<br />Ảnh embed vào báo cáo HTML
+								</div>
+							</div>
+						</div>
+						<div
+							style="
+								display: flex;
+								gap: 6px;
+								margin-top: 12px;
+								padding-top: 10px;
+								border-top: 1px solid var(--bdr);
+								align-items: center;
+							">
+							<button class="btn sm pri" onclick="saveCurrentIncident()">
+								💾 Lưu báo cáo
+							</button>
+							<button
+								class="btn sm"
+								onclick="incEnableEdit()"
+								id="inc_edit_btn"
+								style="display: none">
+								✏️ Chỉnh sửa
+							</button>
+							<button class="btn sm" onclick="closeIncEditor()">✕ Đóng</button>
+							<span
+								id="inc_view_mode_note"
+								style="
+									font-size: 9.5px;
+									color: var(--t3);
+									margin-left: 6px;
+								"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══ BÁO CÁO ═══ -->
+			<div id="tab-reports" class="panel">
+				<div class="g2">
+					<div class="card">
+						<div class="ct">
+							<span class="dot" style="background: var(--pur-m)"></span>Loại báo
+							cáo
+							<button
+								class="btn sm grn"
+								style="margin-left: auto"
+								onclick="addCustomReportType()">
+								+ Thêm hạng mục
+							</button>
+						</div>
+						<div
+							id="rpt_type_list"
+							style="display: flex; flex-direction: column; gap: 5px">
+							<button
+								class="btn"
+								onclick="selectReport('air')"
+								style="text-align: left; padding: 8px 12px">
+								💨 Giảm áp lực khí nhà máy
+							</button>
+							<button
+								class="btn"
+								onclick="selectReport('kaizen')"
+								style="text-align: left; padding: 8px 12px">
+								🔄 Cải tiến 2026 — アルミ塑性課
+							</button>
+							<button
+								class="btn"
+								onclick="selectReport('renovation')"
+								style="text-align: left; padding: 8px 12px">
+								🏗 Kế hoạch cải tạo / 改修計画
+							</button>
+							<button
+								class="btn"
+								onclick="selectReport('tech')"
+								style="text-align: left; padding: 8px 12px">
+								🔬 Báo cáo thí nghiệm kỹ thuật
+							</button>
+							<button
+								class="btn"
+								onclick="selectReport('other')"
+								style="text-align: left; padding: 8px 12px">
+								📄 Báo cáo khác
+							</button>
+							<div id="custom_rpt_types"></div>
+						</div>
+					</div>
+					<div class="card" id="rpt_list_card">
+						<div class="ct">
+							<span
+								class="dot"
+								style="background: var(--blue)"
+								id="rpt_dot"></span>
+							<span id="rpt_list_title">Chọn loại báo cáo</span>
+							<div style="margin-left: auto; display: flex; gap: 5px">
+								<button class="btn sm pri" onclick="saveCurrentReport()">
+									💾 Lưu
+								</button>
+								<button class="btn sm" onclick="exportReport()">
+									📥 Export
+								</button>
+								<button
+									class="btn sm grn"
+									id="rpt_new_btn"
+									onclick="newReport()"
+									style="display: none">
+									+ Mới
+								</button>
+							</div>
+						</div>
+						<div id="rpt_list"></div>
+					</div>
+				</div>
+				<div class="card" id="rpt_editor_card" style="display: none">
+					<div class="ct">
+						<span class="dot" style="background: var(--pur-m)"></span>
+						<span id="rpt_editor_title">Editor</span>
+						<button
+							class="btn sm"
+							onclick="closeRptEditor()"
+							style="margin-left: auto">
+							✕ Đóng
+						</button>
+					</div>
+					<div
+						style="
+							display: grid;
+							grid-template-columns: 1fr 1fr 1fr;
+							gap: 8px;
+							margin-bottom: 10px;
+						">
+						<div>
+							<label
+								style="
+									font-size: 11px;
+									font-weight: 700;
+									display: block;
+									margin-bottom: 3px;
+								"
+								>Tiêu đề</label
+							>
+							<input
+								type="text"
+								id="rpt_title"
+								class="inp"
+								style="width: 100%" />
+						</div>
+						<div>
+							<label
+								style="
+									font-size: 11px;
+									font-weight: 700;
+									display: block;
+									margin-bottom: 3px;
+								"
+								>Ngày</label
+							>
+							<input
+								type="date"
+								id="rpt_date"
+								class="inp"
+								style="width: 100%" />
+						</div>
+						<div>
+							<label
+								style="
+									font-size: 11px;
+									font-weight: 700;
+									display: block;
+									margin-bottom: 3px;
+								"
+								>Trạng thái</label
+							>
+							<select id="rpt_status" class="inp" style="width: 100%">
+								<option>Đang tiến hành</option>
+								<option>Hoàn thành</option>
+								<option>Tạm dừng</option>
+								<option>Đề xuất</option>
+							</select>
+						</div>
+					</div>
+					<div id="rpt_sections"></div>
+					<p style="font-size: 10px; color: var(--t3); margin-top: 8px">
+						💡 Bật Edit Mode để sửa nội dung
+					</p>
+				</div>
+			</div>
+
+			<!-- ═══ NĂNG LỰC ═══ -->
+			<div id="tab-capacity" class="panel">
+				<!-- A1: Filter bar cho Capacity -->
+				<div class="card" style="padding: 8px 14px; margin-bottom: 0">
+					<div
+						style="
+							display: flex;
+							gap: 6px;
+							align-items: center;
+							flex-wrap: wrap;
+						">
+						<span
+							style="font-size: 10px; font-weight: 700; color: var(--t2)"
+							data-i18n="lbl_view"
+							>Xem theo:</span
+						>
+						<select
+							id="cap_series"
+							onchange="capFilterChanged()"
+							class="always-editable"
+							style="font-size: 11px">
+							<option value="ALL" data-i18n="opt_all">Tất cả</option>
+							<option value="MB">MB</option>
+							<option value="NCA">NCA</option>
+							<option value="CG">CG</option>
+						</select>
+						<select
+							id="cap_sku"
+							style="font-size: 11px; display: none"
+							onchange="capSkuChanged()"
+							class="always-editable">
+							<option value="ALL" data-i18n="opt_all_sku">Mọi mã</option>
+						</select>
+						<span
+							style="font-size: 10px; color: var(--t3)"
+							id="cap_sku_ct_note"></span>
+					</div>
+				</div>
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--red-m)"></span
+						><span data-i18n="ct_ct_settings">CT Settings — sửa trực tiếp</span>
+					</div>
+					<table>
+						<thead>
+							<tr>
+								<th data-i18n="th_kotei">Công đoạn</th>
+								<th>CT設定(s)</th>
+								<th>CT正味(s)</th>
+								<th>Δ</th>
+								<th data-i18n="th_may">Máy</th>
+								<th>Batch</th>
+								<th>Raw/ca</th>
+								<th>Effective</th>
+								<th>WIP</th>
+								<th data-i18n="th_status">Trạng thái</th>
+								<th data-i18n="th_note">Ghi chú</th>
+							</tr>
+						</thead>
+						<tbody id="proc_body"></tbody>
+					</table>
+				</div>
+				<div class="card">
+					<div class="ct">
+						<span class="dot" style="background: var(--blue)"></span
+						><span data-i18n="ct_cascade"
+							>Output cascade (Completed / WIP / Idle)</span
+						>
+					</div>
+					<div id="sob_bars" style="margin-bottom: 9px"></div>
+					<div
+						id="sys_note"
+						style="
+							padding: 8px 12px;
+							background: var(--red-l);
+							border-radius: 6px;
+							font-size: 11px;
+							color: var(--red-m);
+							font-weight: 600;
+						"></div>
+				</div>
+				<div class="g2">
+					<div class="card">
+						<div class="ct">
+							<span class="dot" style="background: var(--blue)"></span>CT 設定
+							vs 正味
+						</div>
+						<div style="position: relative; height: 185px">
+							<canvas id="ctChart"></canvas>
+						</div>
+					</div>
+					<div class="card">
+						<div class="ct">
+							<span class="dot" style="background: var(--grn-m)"></span
+							><span data-i18n="ct_cap_kotei">Capacity per kotei</span>
+						</div>
+						<div style="position: relative; height: 185px">
+							<canvas id="capChart"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- MODALS -->
+			<div class="modal" id="modal_worker">
+				<div class="modal-box" style="width: 660px">
+					<div class="modal-hdr">
+						<span class="modal-title" id="mw_title">Worker Detail</span>
+						<div style="display: flex; gap: 5px">
+							<button class="btn sm pri" onclick="saveWorkerDetail()">
+								💾 Lưu
+							</button>
+							<button class="btn sm" onclick="closeModal('modal_worker')">
+								✕
+							</button>
+						</div>
+					</div>
+					<div id="mw_content"></div>
+				</div>
+			</div>
+
+			<!-- AUTH (P3-A): Login modal — không có nút ✕, bắt buộc đăng nhập mới đóng được -->
+			<div class="modal" id="modal_login">
+				<div class="modal-box" style="width: 320px">
+					<div class="modal-hdr">
+						<span class="modal-title">🔐 Đăng nhập</span>
+					</div>
+					<div style="display: grid; gap: 8px">
+						<label style="font-size: 11px"
+							>Username:
+							<input
+								type="text"
+								id="login_user"
+								class="inp always-editable"
+								style="width: 100%; margin-top: 2px"
+								onkeydown="loginKeydown(event)"
+						/></label>
+						<label style="font-size: 11px"
+							>Password:
+							<input
+								type="password"
+								id="login_pass"
+								class="inp always-editable"
+								style="width: 100%; margin-top: 2px"
+								onkeydown="loginKeydown(event)"
+						/></label>
+						<div id="login_err" style="font-size: 11px; color: var(--red-m); min-height: 14px"></div>
+					</div>
+					<div style="display: flex; justify-content: flex-end; margin-top: 10px">
+						<button class="btn sm pri" onclick="doLogin()">🔑 Đăng nhập</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- AUTH (P3-A): Đổi password modal -->
+			<div class="modal" id="modal_changepw">
+				<div class="modal-box" style="width: 340px">
+					<div class="modal-hdr">
+						<span class="modal-title">🔑 Đổi password</span>
+						<button class="btn sm" onclick="closeModal('modal_changepw')">✕</button>
+					</div>
+					<div style="display: grid; gap: 8px">
+						<label style="font-size: 11px"
+							>Password hiện tại:
+							<input
+								type="password"
+								id="changepw_old"
+								class="inp always-editable"
+								style="width: 100%; margin-top: 2px"
+								onkeydown="changepwKeydown(event)"
+						/></label>
+						<label style="font-size: 11px"
+							>Password mới (≥ 6 ký tự):
+							<input
+								type="password"
+								id="changepw_new"
+								class="inp always-editable"
+								style="width: 100%; margin-top: 2px"
+								onkeydown="changepwKeydown(event)"
+						/></label>
+						<label style="font-size: 11px"
+							>Nhập lại password mới:
+							<input
+								type="password"
+								id="changepw_confirm"
+								class="inp always-editable"
+								style="width: 100%; margin-top: 2px"
+								onkeydown="changepwKeydown(event)"
+						/></label>
+						<div id="changepw_err" style="font-size: 11px; color: var(--red-m); min-height: 14px"></div>
+					</div>
+					<div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px">
+						<button class="btn sm" onclick="closeModal('modal_changepw')">Hủy</button>
+						<button class="btn sm pri" onclick="doChangePassword()">✅ Đổi password</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal" id="modal_kh">
+				<div class="modal-box" style="width: 360px">
+					<div class="modal-hdr">
+						<span class="modal-title">Set KH mặc định</span>
+						<button class="btn sm" onclick="closeModal('modal_kh')">✕</button>
+					</div>
+					<div style="display: grid; gap: 8px">
+						<label style="font-size: 11px"
+							>Series:
+							<select id="kh_series" style="margin-left: 4px">
+								<option value="ALL">Tất cả</option>
+								<option>MB</option>
+								<option>NCA</option>
+								<option>CG</option>
+							</select></label
+						>
+						<label style="font-size: 11px"
+							>KH/ngày:
+							<input
+								type="number"
+								id="kh_val"
+								value="400"
+								min="0"
+								class="inp"
+								style="width: 80px; margin-left: 4px"
+						/></label>
+						<label style="font-size: 11px"
+							><input type="checkbox" id="kh_skip_we" checked /> Bỏ qua
+							T7/CN</label
+						>
+						<label style="font-size: 11px"
+							><input type="checkbox" id="kh_overwrite" /> Ghi đè ô đã có</label
+						>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 6px;
+							margin-top: 10px;
+							justify-content: flex-end;
+						">
+						<button class="btn sm" onclick="closeModal('modal_kh')">Hủy</button>
+						<button class="btn sm pri" onclick="applyKH()">✅ Áp dụng</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal" id="modal_tt">
+				<div class="modal-box" style="width: 380px">
+					<div class="modal-hdr">
+						<span class="modal-title">Nhập TT hàng loạt</span>
+						<button class="btn sm" onclick="closeModal('modal_tt')">✕</button>
+					</div>
+					<div style="display: grid; gap: 8px">
+						<label style="font-size: 11px"
+							>Mã SP:
+							<select
+								id="tt_sku"
+								style="margin-left: 4px; width: 160px"></select
+						></label>
+						<label style="font-size: 11px"
+							>Từ ngày:
+							<input
+								type="number"
+								id="tt_from"
+								value="1"
+								min="1"
+								max="31"
+								class="inp"
+								style="width: 58px; margin-left: 4px"
+						/></label>
+						<label style="font-size: 11px"
+							>Đến ngày:
+							<input
+								type="number"
+								id="tt_to"
+								value="30"
+								min="1"
+								max="31"
+								class="inp"
+								style="width: 58px; margin-left: 4px"
+						/></label>
+						<label style="font-size: 11px"
+							>Giá trị TT:
+							<input
+								type="number"
+								id="tt_val"
+								value="0"
+								min="0"
+								class="inp"
+								style="width: 80px; margin-left: 4px"
+						/></label>
+						<label style="font-size: 11px"
+							><input type="checkbox" id="tt_skip_we" checked /> Bỏ qua
+							T7/CN</label
+						>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 6px;
+							margin-top: 10px;
+							justify-content: flex-end;
+						">
+						<button class="btn sm" onclick="closeModal('modal_tt')">Hủy</button>
+						<button class="btn sm pri" onclick="applyBulkTT()">
+							✅ Áp dụng
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal" id="modal_sku">
+				<div class="modal-box" style="width: 380px">
+					<div class="modal-hdr">
+						<span class="modal-title">Thêm mã SP mới</span>
+						<button class="btn sm" onclick="closeModal('modal_sku')">✕</button>
+					</div>
+					<div style="display: grid; gap: 8px">
+						<label style="font-size: 11px"
+							>Mã SP:
+							<input
+								type="text"
+								id="new_code"
+								class="inp"
+								style="width: 140px; margin-left: 4px"
+								placeholder="VD: MB90TD"
+						/></label>
+						<label style="font-size: 11px"
+							>Series:
+							<select id="new_series" style="margin-left: 4px">
+								<option>MB</option>
+								<option>NCA</option>
+								<option>CG</option>
+							</select></label
+						>
+						<label style="font-size: 11px"
+							>OD (mm):
+							<input
+								type="number"
+								id="new_od"
+								value="50"
+								class="inp"
+								style="width: 80px; margin-left: 4px"
+						/></label>
+						<label style="font-size: 11px"
+							>ID (mm):
+							<input
+								type="number"
+								id="new_id2"
+								value="45"
+								class="inp"
+								style="width: 80px; margin-left: 4px"
+						/></label>
+						<label style="font-size: 11px"
+							>CT Factor:
+							<input
+								type="number"
+								id="new_ctf"
+								value="1.00"
+								step="0.01"
+								class="inp"
+								style="width: 80px; margin-left: 4px"
+						/></label>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 6px;
+							margin-top: 10px;
+							justify-content: flex-end;
+						">
+						<button class="btn sm" onclick="closeModal('modal_sku')">
+							Hủy
+						</button>
+						<button class="btn sm grn" onclick="applyNewSKU()">✅ Thêm</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal" id="modal_archive">
+				<div class="modal-box" style="width: 480px">
+					<div class="modal-hdr">
+						<span class="modal-title">📚 Lịch sử tháng</span>
+						<button class="btn sm" onclick="closeModal('modal_archive')">
+							✕
+						</button>
+					</div>
+					<div id="archive_content"></div>
+				</div>
+			</div>
+
+			<div class="modal" id="modal_summary">
+				<div class="modal-box" style="width: 500px">
+					<div class="modal-hdr">
+						<span class="modal-title">📊 Tóm tắt tháng</span>
+						<button class="btn sm" onclick="closeModal('modal_summary')">
+							✕ Đóng
+						</button>
+					</div>
+					<div id="summary_content"></div>
+				</div>
+			</div>
+
+			<!-- ═══ HELP TAB ═══ -->
+			<div id="tab-help" class="panel">
+				<div
+					class="card"
+					style="
+						padding: 14px;
+						background: var(--navy);
+						color: #fff;
+						margin-bottom: 11px;
+					">
+					<div style="font-size: 16px; font-weight: 700; margin-bottom: 4px">
+						❓ Hướng dẫn sử dụng Dashboard
+					</div>
+					<div style="font-size: 11px; opacity: 0.7">
+						生産管理 v7 — AL Cold Drawing Tube · 19 mã × 3 Series
+					</div>
+				</div>
+				<div id="help_content"></div>
+			</div>
+
+			<!-- FLOATING TOOLBAR -->
+			<div class="ftb-wrap">
+				<button class="ftb" onclick="window.print()" title="In (Ctrl+P)">
+					🖨
+				</button>
+				<button class="ftb" onclick="downloadHTML()" title="Export HTML">
+					📦
+				</button>
+				<button class="ftb" onclick="exportPlanCSV()" title="Export CSV">
+					📊
+				</button>
+				<button class="ftb" onclick="enterEdit()" title="Edit mode">✏️</button>
+				<button
+					class="ftb"
+					onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+					title="Lên đầu">
+					⬆
+				</button>
+			</div>
+
+			<div class="save-ind" id="save_ind">💾 Đã lưu</div>
+		</div>
+		<!-- dashboardcode.js đã tách thành 15 module — PHẢI giữ đúng thứ tự load này -->
+		<script src="scr/dashboard_core.js"></script>
+		<script src="scr/dashboard_api.js"></script>
+		<script src="scr/dashboard_auth.js"></script>
+		<script src="scr/dashboard_appdata.js"></script>
+		<script src="scr/dashboard_compare.js"></script>
+		<script src="scr/dashboard_plan.js"></script>
+		<script src="scr/dashboard_overview.js"></script>
+		<script src="scr/dashboard_heatmap.js"></script>
+		<script src="scr/dashboard_pulse.js"></script>
+		<script src="scr/dashboard_worker.js"></script>
+		<script src="scr/dashboard_quality.js"></script>
+		<script src="scr/dashboard_incident.js"></script>
+		<script src="scr/dashboard_reports.js"></script>
+		<script src="scr/dashboard_capacity.js"></script>
+		<script src="scr/dashboard_i18n.js"></script>
+		<script src="scr/dashboard_main.js"></script>
+		<!-- dashboard_main.js chứa BOOTSTRAP — phải là file CUỐI CÙNG -->
+	</body>
+</html>

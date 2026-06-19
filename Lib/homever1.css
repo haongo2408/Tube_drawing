@@ -1,0 +1,180 @@
+/* home.css — Homepage specific styles */
+
+.app-shell {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	background: #eef1f6;
+	font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+}
+
+/* ── HEADER ── */
+.app-header {
+	background: linear-gradient(135deg, #0f2b4a 0%, #1a3d6b 100%);
+	color: #fff;
+	padding: 18px 27px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	box-shadow: 0 2px 12px rgba(15, 43, 74, 0.25);
+}
+.hdr-brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.hdr-logo {
+	font-size: 28px;
+	background: rgba(255, 255, 255, 0.1);
+	width: 46px;
+	height: 46px;
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.hdr-title {
+	font-size: 100px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+}
+.hdr-sub {
+	font-size: 10.5px;
+	color: rgba(255, 255, 255, 0.6);
+	margin-top: 1px;
+}
+.hdr-meta {
+	text-align: right;
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.7);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	align-items: flex-end;
+}
+.hdr-clock {
+	font-family: 'Consolas', monospace;
+	font-size: 18px;
+	font-weight: 700;
+	color: #fff;
+	letter-spacing: 1px;
+}
+
+/* ── MAIN ── */
+.home-main {
+	flex: 1;
+	max-width: 920px;
+	margin: 0 auto;
+	padding: 28px 20px;
+	width: 100%;
+}
+.section-label {
+	font-size: 11px;
+	font-weight: 700;
+	color: #5f6368;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	margin-bottom: 14px;
+}
+
+/* ── NAV GRID ── */
+.nav-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 14px;
+}
+
+/* ── NAV CARD ── */
+.nav-card {
+	background: #fff;
+	border: 1px solid #dde2ec;
+	border-radius: 12px;
+	padding: 20px 18px;
+	text-align: left;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	box-shadow: 0 1px 4px rgba(15, 43, 74, 0.07);
+	position: relative;
+	overflow: hidden;
+}
+.nav-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: #1e5fa8;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+.nav-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(15, 43, 74, 0.14);
+	border-color: #1e5fa8;
+}
+.nav-card:hover::before {
+	opacity: 1;
+}
+.nav-card:active {
+	transform: translateY(0);
+}
+
+.nav-icon {
+	font-size: 26px;
+	margin-bottom: 4px;
+	display: block;
+}
+.nav-name {
+	font-size: 13px;
+	font-weight: 700;
+	color: #0f2b4a;
+}
+.nav-desc {
+	font-size: 10.5px;
+	color: #9aa3b0;
+	line-height: 1.4;
+}
+
+/* Dashboard card special */
+.nav-card--dashboard {
+	background: linear-gradient(135deg, #0f2b4a 0%, #1a3d6b 100%);
+	border-color: #0f2b4a;
+	grid-column: span 1;
+}
+.nav-card--dashboard .nav-name {
+	color: #fff;
+}
+.nav-card--dashboard .nav-desc {
+	color: rgba(255, 255, 255, 0.6);
+}
+.nav-card--dashboard::before {
+	background: #fbbf24;
+}
+.nav-card--dashboard:hover {
+	border-color: #fbbf24;
+}
+
+/* ── FOOTER ── */
+.app-footer {
+	background: #0f2b4a;
+	color: rgba(255, 255, 255, 0.45);
+	text-align: center;
+	padding: 9px;
+	font-size: 10px;
+	letter-spacing: 0.3px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+	.nav-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+	.home-main {
+		padding: 16px 12px;
+	}
+}

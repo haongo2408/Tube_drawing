@@ -1,189 +1,338 @@
+/* ════════════════════════════════════════════════
+   Lib/main.css — Global styles, Tube Drawing System
+   v3.0 — Full-page, navy theme, fix label/input align
+   Chỉ đổi style, KHÔNG đổi tag/id/class nào JS query
+════════════════════════════════════════════════ */
+
 * {
-  font-family: 游ゴシック体, "Yu Gothic", YuGothic, "ヒラギノ角ゴシック Pro",
-    "Hiragino Kaku Gothic Pro", メイリオ, Meiryo, Osaka, "ＭＳ Ｐゴシック",
-    "MS PGothic", sans-serif;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", "Yu Gothic", YuGothic, Meiryo, sans-serif;
+  box-sizing: border-box;
+}
+
+:root{
+  --navy:#0f2b4a;
+  --navy-2:#1a3d6b;
+  --blue:#1e5fa8;
+  --blue-l:#e8f0fb;
+  --bg:#eef1f6;
+  --bdr:#dde2ec;
+  --t2:#4a5568;
+  --t3:#9aa3b0;
+  --grn:#16a34a; --grn-l:#f0fdf4;
+  --amb:#d97706; --amb-l:#fffbeb;
+  --red:#dc2626; --red-l:#fef2f2;
+  --shd:0 1px 4px rgba(15,43,74,.08);
+  --r:8px;
+  --mono:'Consolas','Courier New',monospace;
+}
+
+/* ── BODY — full page, không giới hạn 800x600 ── */
+html, body {
+  margin: 0;
+  border: none;
+  height: 100%;
+  width: 100%;
 }
 body {
-  margin: 4px;
-  border: solid 1px #0000cc;
   display: flex;
   flex-direction: column;
-  height: calc(600px - 2px);
-  width: calc(800px - 2px);
+  background: var(--bg);
+  color: #1a1a1a;
+  min-height: 100vh;
+  overflow-y: auto;
 }
+
+/* ── HEADER ── */
 header {
   display: flex;
-  border-bottom: dotted 1px #0000cc;
   flex-direction: row;
-  height: 30px;
-  /* justify-content: center; */
   justify-content: space-between;
-  text-align: center;
-  background-color: #0000cc;
-  color: white;
-  font-weight: bold;
-}
-header > div:nth-child(1),
-header > div:nth-child(5) {
-  width: 40px;
-}
-header > div:nth-child(2),
-header > div:nth-child(4) {
-  width: 230px;
-  display: flex;
   align-items: center;
-  justify-content: space-between;
+  height: auto;
+  min-height: 46px;
+  padding: 0 18px;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: .2px;
+  border-bottom: none;
+  box-shadow: 0 2px 8px rgba(15,43,74,.2);
+  flex-shrink: 0;
 }
-header > div:nth-child(3) {
-  /* width: 50px; */
+header > div:nth-child(1), header > div:nth-child(5) { width: auto; }
+header > div:nth-child(2), header > div:nth-child(4) {
+  width: auto; display: flex; align-items: center; gap: 10px;
 }
-header > div:nth-child(3) {
-  display: flex;
-  align-items: center;
-}
-#machine_status {
-  font-weight: normal;
-  cursor: pointer;
-}
-.machine_number {
-  width: 40px;
-}
+header > div:nth-child(3) { display: flex; align-items: center; gap: 8px; }
+
+#machine_status { font-weight: 600; cursor: pointer; color: #fff; }
+.machine_number { width: auto; color: rgba(255,255,255,.7); font-size: 11px; }
 .machine_status {
-  width: 70px;
-  height: 20px;
+  width: 76px; height: 26px; border-radius: 5px;
+  border: 1px solid rgba(255,255,255,.3) !important;
+  background: rgba(255,255,255,.1); color: #fff;
 }
-#number1_status {
-  border-style: solid;
-  border-width: 1px;
-  border-color: #0000cc;
-  /* border: greenyellow; */
+#number1_status, #number2_status {
+  border: 1px solid rgba(255,255,255,.3) !important;
+  border-radius: 5px; background: rgba(255,255,255,.1); color: #fff;
 }
-#number2_status {
-  border-style: solid;
-  border-width: 1px;
-  border-color: #0000cc;
-  /* border: greenyellow; */
-}
+
+/* ── FOOTER ── */
 footer {
-  width: 100%;
-  height: calc(598px - 31px - 5px - 480px);
+  width: 100%; height: auto; flex-shrink: 0;
+  padding: 6px 14px; font-size: 10.5px; color: var(--t3);
+  text-align: center; border-top: 1px solid var(--bdr); background: #fff;
 }
+
+/* ── MAIN WRAPPER ── */
 .main__wrapper {
-  /* border-bottom: dotted 1px #0000cc; */
-  display: flex;
-  height: 550px;
-  flex-direction: column;
-  flex-wrap: wrap;
-  font-size: 10pt;
-  padding-top: 5px;
-  text-align: center;
+  display: flex; flex: 1; flex-direction: row; flex-wrap: wrap;
+  font-size: 12px; padding: 16px; text-align: center;
+  gap: 14px; align-items: flex-start;
 }
-/* ボタンの設定 */
+
+/* ── BUTTONS ── */
 button {
-  width: 100px;
-  height: 40px;
-  display: block;
-  position: relative;
-  padding: 0px;
-  margin: 10px auto 10px auto;
-  text-align: center;
-  text-decoration: none;
-  color: white;
-  background: #0000ff;
-  border: none;
-  font-size: 9pt;
-  font-weight: bold;
+  width: auto; height: auto; min-width: 70px;
+  display: inline-block; position: relative;
+  padding: 7px 18px; margin: 4px;
+  text-align: center; text-decoration: none;
+  color: #fff; background: var(--blue);
+  border: none; border-radius: var(--r);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .18s, transform .1s, box-shadow .18s;
+  box-shadow: var(--shd);
 }
 button:hover {
-  cursor: pointer;
-  text-decoration: none;
-  background: #ff88ef;
-  transition: background 0.3s;
+  background: var(--navy); transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(15,43,74,.2);
 }
+button:active { transform: translateY(0); }
 button:disabled {
-  cursor: default;
-  text-decoration: none;
-  background: #d7d7e9;
+  background: #d7d7e9; color: #9aa3b0;
+  transform: none; box-shadow: none; cursor: default;
 }
-dialog button {
-  height: 50px;
+dialog button { height: auto; padding: 9px 22px; }
+dialog {
+  border: none; border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(15,43,74,.25); padding: 18px;
 }
-/* テーブルの設定 */
-table {
-  border-collapse: collapse;
-  cursor: pointer;
-}
-thead,
-tbody {
-  display: block;
-}
-tbody {
-  overflow-y: scroll;
-  font-size: 10pt;
-  height: 75px;
-}
-thead td,
-thead th {
-  background-color: #0000ff;
-  border: solid 1px white;
-  color: white;
-  text-align: center;
-  font-size: 9pt;
-  font-weight: normal;
+
+/* ── TABLES — base (overridden per-page in index.css) ── */
+table { border-collapse: collapse; cursor: pointer; border-radius: var(--r); overflow: hidden; }
+thead, tbody { display: block; }
+tbody { overflow-y: auto; font-size: 11.5px; }
+thead td, thead th {
+  background-color: var(--blue);
+  border: solid 1px rgba(255,255,255,.2);
+  color: white; text-align: center;
+  font-size: 11px; font-weight: 600; padding: 6px 8px;
 }
 tbody td {
-  border: solid 1px rgb(243, 243, 243);
-  font-size: 9pt;
-  font-weight: normal;
+  border: solid 1px #f0f2f6; font-size: 11.5px;
+  font-weight: normal; padding: 5px 8px; background: #fff;
 }
-tbody tr.selected-record {
-  background-color: #d6d283;
-}
-/* 必要入力枠の色塗り */
-.input-required {
-  /* background-color: #ffd1bf; */
-}
-.no-input {
-  background-color: #d6d283;
-}
-.complete-input {
-  background-color: #ffff;
-}
-/* 表のレコードの不可視化 */
-table tbody tr.hide {
-  display: none;
-}
-/* input要素をdisabledにしたとき */
-input:disabled {
-  background-color: #d1d1d1;
-}
-/* ------------ input block -------------------- */
+tbody tr.selected-record { background-color: var(--blue-l); }
+tbody tr.selected-record td { background-color: var(--blue-l); }
+tbody tr:hover td { background: #f5f8fc; }
+
+/* ── STATUS COLOR CLASSES ── */
+.no-input { background-color: var(--amb-l) !important; }
+.complete-input { background-color: var(--grn-l) !important; }
+table tbody tr.hide { display: none; }
+input:disabled { background-color: #ececec; color: #9aa3b0; }
+
+/* ── INPUT BLOCK (label+input combo) ── */
 .input-block__outer {
-  height: 25px;
-  width: 150px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
+  height: auto; width: auto;
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: 0; border-radius: var(--r); overflow: hidden; box-shadow: var(--shd);
 }
 .input__title {
-  display: flex;
-  align-items: center;
-  height: 22px;
-  width: 40px;
-  background-color: #0000ff;
-  color: white;
+  display: flex; align-items: center; height: 30px; width: auto;
+  padding: 0 10px; background-color: var(--navy); color: white;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
 }
+
+/* ── INPUTS / SELECTS — fix vertical align ── */
 input {
-  width: 40px;
-  /* height: 20px; */
-  border: 1px solid #0000ff;
-  text-align: right;
-  padding: 0px 2px;
+  width: 76px; height: 28px;
+  border: 1px solid var(--bdr); border-radius: 5px;
+  text-align: right; padding: 0 7px; font-size: 11.5px;
+  transition: border-color .15s, box-shadow .15s;
+  vertical-align: middle;
 }
+input:focus {
+  outline: none; border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(30,95,168,.18);
+}
+input[type="date"], input[type="time"] { text-align: center; }
+input[type="file"] { width: auto; text-align: left; }
+
 select {
-  width: 100px;
-  height: 22px;
-  border: 1px solid #0000ff;
+  width: 128px; height: 30px;
+  border: 1px solid var(--bdr); border-radius: 5px;
+  font-size: 11.5px; background: #fff; cursor: pointer;
+  vertical-align: middle;
+}
+select:focus {
+  outline: none; border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(30,95,168,.18);
+}
+
+/* ── NEW: badge cho is_manual override (admin edit) ── */
+.manual-badge {
+  display: inline-block;
+  background: var(--amb-l); color: var(--amb);
+  border: 1px solid #fde5a3;
+  border-radius: 4px; padding: 1px 6px;
+  font-size: 9px; font-weight: 700; margin-left: 4px;
+}
+
+/* ── NEW: editable cell trong summary table (admin) ── */
+.editable-qty {
+  background: #fffbeb !important;
+  border: 1px dashed var(--amb) !important;
+  cursor: text !important;
+  width: 56px !important;
+  text-align: center !important;
+}
+
+/* ════════════════════════════════════════════════
+   PATCH v3 — CSS cho 5 cải tiến UI/UX
+════════════════════════════════════════════════ */
+
+/* ── 1. Highlight dòng NG > 0 ── */
+#summary__table tbody tr.row-has-ng td {
+  background-color: var(--red-l) !important;
+}
+#summary__table tbody tr.row-has-ng:hover td {
+  background-color: #fde2e1 !important;
+}
+
+/* ── 3. KPI BAR ── */
+#kpi_bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 18px 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+.kpi-chip {
+  background: #fff;
+  border: 1px solid var(--bdr);
+  border-radius: 10px;
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: var(--shd);
+  min-width: 130px;
+  flex: 1;
+}
+.kpi-label { font-size: 10px; color: var(--t3); font-weight: 600; }
+.kpi-val { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--navy); }
+.kpi-chip.kpi-warn { background: var(--amb-l); border-color: #fde5a3; }
+.kpi-chip.kpi-warn .kpi-val { color: var(--amb); }
+.kpi-chip.kpi-ok { background: var(--grn-l); border-color: #b7dfbe; }
+.kpi-chip.kpi-ok .kpi-val { color: var(--grn); }
+
+/* ── 4. Loading overlay ── */
+#loading_overlay {
+  font-family: inherit;
+}
+
+/* ════════════════════════════════════════════════
+   PATCH v4 — CSS bảng chọn lô ép tự động
+════════════════════════════════════════════════ */
+#press_options_wrapper {
+  background: #fff;
+  border: 1px solid var(--bdr);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: var(--shd);
+  max-height: 260px;
+  min-width: 100%;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+#press_options_table { width: 100%; font-size: 11.5px; min-width: 420px; }
+#press_options_table thead th {
+  background: var(--navy);
+  color: #fff;
+  font-size: 10.5px;
+  padding: 7px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+#press_options_table tbody td { padding: 7px 10px; }
+#press_options_table tbody tr {
+  cursor: pointer;
+  transition: background .12s;
+}
+#press_options_table tbody tr:hover td { background: var(--blue-l); }
+#press_options_table tbody tr.selected-record td { background: #c7ddf7 !important; }
+#press_options_table tbody tr.row-out-of-stock td {
+  background: #f5f5f5 !important;
+  color: #b0b0b0;
+  cursor: not-allowed;
+}
+#press_options_table .qty-ok { color: var(--grn); font-weight: 700; }
+#press_options_table .qty-empty { color: var(--red); font-weight: 700; }
+
+/* ════════════════════════════════════════════════
+   PATCH v6/7/8 — CSS Autocomplete + Lang switch + Validate
+════════════════════════════════════════════════ */
+
+/* ── AUTOCOMPLETE DROPDOWN ── */
+.ac-wrapper { position: relative; display: inline-block; }
+.ac-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%; left: 0;
+  background: #fff;
+  border: 1px solid var(--bdr);
+  border-radius: 6px;
+  box-shadow: var(--shd);
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 50;
+  min-width: 160px;
+}
+.ac-item {
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--bdr);
+  white-space: nowrap;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover { background: var(--blue-l); color: var(--navy); }
+
+/* ── LANGUAGE SWITCH ── */
+.lang-switch-btn {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.lang-switch-btn:hover { background: rgba(255,255,255,.22); }
+.lang-switch-btn.act {
+  background: #f59e0b;
+  color: #0f2b4a;
+  border-color: #f59e0b;
+  font-weight: 700;
+}
+
+/* ── VALIDATE: nút update disabled khi chưa đổi gì ── */
+#update__button:disabled {
+  background: #d7d7e9 !important;
+  color: #9aa3b0 !important;
+  cursor: not-allowed !important;
 }

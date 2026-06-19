@@ -19,7 +19,8 @@ const myAjax = {
         ajaxReturnData = data;
       })
       .fail(function (err) {
-        alert(err.responseText);
+        console.error("AJAX lỗi [" + fileName + "]:", err.responseText);
+        ajaxReturnData = []; // PATCH: tránh undefined làm crash fillTableBody/forEach phía sau
       });
   },
 };
@@ -235,26 +236,65 @@ function selCutByDrawing() {
   myAjax.myAjax(fileName, sendData);
   fillTableBody(ajaxReturnData, $("#profile_cut_table tbody"));
 };
+
+/* ════════════════════════════════════════════════
+   PATCH B7+B8 — Rack KHÔNG biến mất sau khi chọn.
+   Max tự trừ theo Qty đã lấy, có thể lấy thêm lần sau.
+   Đồng thời sinh dữ liệu cây thành phẩm (input_order, piece_code)
+   gửi kèm khi Save (qua InsRackData.php v2).
+════════════════════════════════════════════════ */
+$(document).off("click", "#select_rack_table tbody tr");
 $(document).on("click", "#select_rack_table tbody tr", function() {
   if (!$(this).hasClass("selected-record")) {
-      $(this).parent().find("tr").removeClass("selected-record");
-      $(this).addClass("selected-record");
-      $("#rack_selected").removeAttr("id");
-      $(this).attr("id", "rack_selected");
+    $(this).parent().find("tr").removeClass("selected-record");
+    $(this).addClass("selected-record");
+    $("#rack_selected").removeAttr("id");
+    $(this).attr("id", "rack_selected");
+    return;
+  }
+
+  const rack_id = $(this).find("td:nth-child(1)").html();
+  const rack_number = $(this).find("td:nth-child(2)").html();
+  const qty = parseInt($(this).find("td:nth-child(3) input").val(), 10) || 0;
+  const $maxCell = $(this).find("td:nth-child(4)");
+  const currentMax = parseInt($maxCell.html(), 10) || 0;
+
+  if (qty <= 0) {
+    alert("Vui lòng nhập số lượng lấy từ rack trước khi chọn.");
+    return;
+  }
+  if (qty > currentMax) {
+    alert("Số lượng vượt quá tồn kho hiện có trên rack (" + currentMax + ").");
+    return;
+  }
+  if (checkRackId(rack_id)) {
+    // Rack này đã có dòng trong input_rack_table — cộng dồn quantity vào dòng đó
+    let existingRow = null;
+    $("#input_rack_table tbody tr").each(function() {
+      if ($(this).find("td:first").html() == rack_id) existingRow = $(this);
+    });
+    if (existingRow) {
+      const oldQty = parseInt(existingRow.find("td:nth-child(4)").html(), 10) || 0;
+      existingRow.find("td:nth-child(4)").html(oldQty + qty);
+    }
   } else {
-      let rack_id = $(this).find("td:nth-child(1)").html();
-      let rack_number = $(this).find("td:nth-child(2)").html();
-      let qty = $(this).find("td:nth-child(3) input").val();
-      press_date = $("#press_date").val();
-      var newTr = $("<tr>");
-      $("<td>").html(rack_id).appendTo(newTr);
-      $("<td>").html(press_date).appendTo(newTr);
-      $("<td>").html(rack_number).appendTo(newTr);
-      $("<td>").html(qty).appendTo(newTr);
-      if (!checkRackId(rack_id)) {
-        $(newTr).appendTo("#input_rack_table tbody");
-        $(this).remove();
-      } else (alert("rack_number already input!"))
+    const press_date = $("#press_date").val();
+    const newTr = $("<tr>");
+    $("<td>").html(rack_id).appendTo(newTr);
+    $("<td>").html(press_date).appendTo(newTr);
+    $("<td>").html(rack_number).appendTo(newTr);
+    $("<td>").html(qty).appendTo(newTr);
+    newTr.appendTo("#input_rack_table tbody");
+  }
+
+  // Trừ Max ngay trên dòng (KHÔNG xóa dòng khỏi select_rack_table)
+  $maxCell.html(currentMax - qty);
+  $(this).find("td:nth-child(3) input").val(1); // reset ô nhập về 1 cho lần lấy tiếp theo
+  $(this).removeClass("selected-record").removeAttr("id");
+
+  if (currentMax - qty <= 0) {
+    $(this).addClass("row-out-of-stock");
+    $(this).css("pointer-events", "none");
   }
 });
 $(document).on("change", "#select_rack_table tbody tr", function() {
@@ -501,6 +541,10 @@ function makeSummaryTable() {
 };
 function fillTableBody(data, tbodyDom) {
   $(tbodyDom).empty();
+  if (!Array.isArray(data)) {
+    console.error("fillTableBody nhận data không hợp lệ (không phải array):", data);
+    return; // PATCH: tránh crash khi PHP trả lỗi/null thay vì JSON array
+  }
   data.forEach(function(trVal) {
       let newTr = $("<tr>");
       Object.keys(trVal).forEach(function(tdVal, index) {
@@ -665,4 +709,496 @@ $(document).on("click", "#directive__input", function () {
     null,
     "width=830, height=500,toolbar=yes,menubar=yes,scrollbars=no"
   );
+});
+/* ════════════════════════════════════════════════════════════
+   ═══ PATCH TỔNG HỢP v5 — Tất cả cải tiến hợp nhất, không trùng lặp ═══
+   1. Admin mode + nút Sửa OK/NG trong summary table
+   2. Highlight dòng NG>0 + KPI bar + Filter Term + Loading spinner + Enter-to-next
+   3. Bảng chọn lô ép tự động theo Mã SP (thay quy trình gõ tay press_date)
+════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────
+   HOOK DUY NHẤT vào fillTableBody — gộp tất cả
+   logic cần chạy sau khi 1 bảng được render,
+   tránh khai báo const trùng tên nhiều lần
+─────────────────────────────────────────── */
+const _origFillTableBody = fillTableBody;
+let _summaryRawData = [];
+
+fillTableBody = function(data, tbodyDom) {
+  _origFillTableBody(data, tbodyDom);
+
+  if ($(tbodyDom).is("#summary__table tbody")) {
+    _summaryRawData = data;
+    _decorateSummaryRows(data, tbodyDom);
+    updateKPIBar(data);
+  }
+};
+
+/* ───────────────────────────────────────────
+   1. ADMIN MODE + NÚT SỬA + HIGHLIGHT NG
+─────────────────────────────────────────── */
+const ADMIN_KEY = "tube_drawing_admin_mode";
+function isAdminMode() {
+  return localStorage.getItem(ADMIN_KEY) === "1";
+}
+function toggleAdminMode() {
+  const cur = isAdminMode();
+  localStorage.setItem(ADMIN_KEY, cur ? "0" : "1");
+  $("#admin_toggle_btn").text(!cur ? "🔓 Admin ON" : "🔒 Admin");
+  makeSummaryTable();
+}
+
+function _decorateSummaryRows(data, tbodyDom) {
+  $(tbodyDom).find("tr").each(function(i) {
+    const rowData = data[i];
+    if (!rowData) return;
+
+    // Highlight NG > 0
+    if (Number(rowData.total_ng) > 0) {
+      $(this).addClass("row-has-ng");
+    }
+
+    // Cột "Sửa" — nút admin hoặc badge "đã sửa"
+    const drawingId = rowData.id;
+    const okVal = rowData.total_ok || 0;
+    const ngVal = rowData.total_ng || 0;
+    const isManual = rowData.is_manual == 1;
+    const $actionTd = $("<td>").addClass("action-cell");
+
+    if (isAdminMode()) {
+      const $btn = $("<button>")
+        .text("✏️")
+        .css({ padding: "2px 8px", minWidth: "auto", fontSize: "11px" })
+        .on("click", function(e) {
+          e.stopPropagation();
+          const newOk = prompt("Sửa số lượng OK:", okVal);
+          if (newOk === null) return;
+          const newNg = prompt("Sửa số lượng NG:", ngVal);
+          if (newNg === null) return;
+          if (!$.isNumeric(newOk) || !$.isNumeric(newNg)) {
+            alert("Vui lòng nhập số hợp lệ");
+            return;
+          }
+          $.ajax({
+            type: "POST",
+            url: "./php/UpdateSummaryQty.php",
+            dataType: "json",
+            data: {
+              drawing_id: drawingId,
+              ok_quantity: newOk,
+              ng_quantity: newNg,
+              editor_staff_id: $("#staff_id").val() || 0
+            },
+            async: false
+          }).done(function(res) {
+            if (res.error) {
+              alert("Lỗi: " + res.error);
+            } else {
+              makeSummaryTable();
+            }
+          }).fail(function(err) {
+            alert("Lỗi kết nối: " + err.responseText);
+          });
+        });
+      $actionTd.append($btn);
+    } else if (isManual) {
+      $actionTd.append($("<span>").addClass("manual-badge").text("✏️ Đã sửa"));
+    }
+    $(this).append($actionTd);
+  });
+}
+
+$(document).ready(function() {
+  const $adminBtn = $("<button>")
+    .text(isAdminMode() ? "🔓 Admin ON" : "🔒 Admin")
+    .attr("id", "admin_toggle_btn")
+    .css({ fontSize: "10px", padding: "4px 10px", minWidth: "auto" })
+    .on("click", toggleAdminMode);
+  $("header").append($adminBtn);
+});
+
+/* ───────────────────────────────────────────
+   2. FILTER Term + KPI BAR + Loading + Enter-to-next
+─────────────────────────────────────────── */
+function applyTermFilter() {
+  const start = $("#start-term").val();
+  const end = $("#end-term").val();
+  const prodFilter = ($("#production_type_filter").val() || "").trim().toLowerCase();
+  if (!start && !end && !prodFilter) {
+    _origFillTableBody(_summaryRawData, $("#summary__table tbody"));
+    _decorateSummaryRows(_summaryRawData, $("#summary__table tbody"));
+    return;
+  }
+  const filtered = _summaryRawData.filter(function(row) {
+    let ok = true;
+    if (start && row.production_date < start) ok = false;
+    if (end && row.production_date > end) ok = false;
+    if (prodFilter && !(row.production_number || "").toLowerCase().includes(prodFilter)) ok = false;
+    return ok;
+  });
+  _origFillTableBody(filtered, $("#summary__table tbody"));
+  _decorateSummaryRows(filtered, $("#summary__table tbody"));
+}
+$(document).on("change", "#start-term, #end-term", applyTermFilter);
+$(document).on("keyup", "#production_type_filter", applyTermFilter);
+
+function updateKPIBar(data) {
+  if (!$("#kpi_bar").length) {
+    $("<div id='kpi_bar'></div>").insertBefore(".main__wrapper");
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonth = today.slice(0, 7);
+
+  let todayQty = 0, monthOk = 0, monthNg = 0;
+  data.forEach(function(row) {
+    const qty = Number(row.total_qty) || 0;
+    const ok = Number(row.total_ok) || 0;
+    const ng = Number(row.total_ng) || 0;
+    if (row.production_date === today) todayQty += qty;
+    if ((row.production_date || "").slice(0, 7) === thisMonth) {
+      monthOk += ok; monthNg += ng;
+    }
+  });
+  const monthTotal = monthOk + monthNg;
+  const ngPct = monthTotal > 0 ? ((monthNg / monthTotal) * 100).toFixed(1) : "0.0";
+
+  $("#kpi_bar").html(`
+    <div class="kpi-chip"><span class="kpi-label">📦 Tổng SL hôm nay</span><span class="kpi-val">${todayQty.toLocaleString()}</span></div>
+    <div class="kpi-chip ${ngPct > 3 ? 'kpi-warn' : 'kpi-ok'}"><span class="kpi-label">⚠ %NG tháng này</span><span class="kpi-val">${ngPct}%</span></div>
+    <div class="kpi-chip"><span class="kpi-label">✅ OK tháng này</span><span class="kpi-val">${monthOk.toLocaleString()}</span></div>
+    <div class="kpi-chip"><span class="kpi-label">❌ NG tháng này</span><span class="kpi-val">${monthNg.toLocaleString()}</span></div>
+  `);
+}
+
+if (!$("#loading_overlay").length) {
+  $("body").prepend(`
+    <div id="loading_overlay" style="display:none;position:fixed;inset:0;background:rgba(15,43,74,.15);z-index:999;align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:16px 24px;border-radius:10px;box-shadow:0 4px 16px rgba(15,43,74,.2);font-size:13px;font-weight:600;color:#0f2b4a;">
+        ⏳ Đang xử lý...
+      </div>
+    </div>
+  `);
+}
+const _origMyAjaxFn = myAjax.myAjax;
+myAjax.myAjax = function(fileName, sendData) {
+  $("#loading_overlay").show();
+  try {
+    _origMyAjaxFn(fileName, sendData);
+  } finally {
+    $("#loading_overlay").hide();
+  }
+};
+
+const TAB_ORDER = [
+  "production_date","production_time_start","production_time_end","staff",
+  "production_number","die_number","die_status_note","plug_number","plug_status_note",
+  "buloong_a1","buloong_a2","buloong_b1","buloong_b2",
+  "buloong_c1","buloong_c2","buloong_d1","buloong_d2",
+  "conveyor_height","conveyor_height_note","compress_dim","compress_dim_note",
+  "compress_pressure","compress_pressure_note","clamp_pressure","clamp_pressure_note",
+  "start_pull_speed","main_pull_speed","end_pull_speed","pusher_speed",
+  "angle","roller_dis","roller_speed","puller_force"
+];
+$(document).on("keydown", "input", function(e) {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  const curId = $(this).attr("id");
+  const idx = TAB_ORDER.indexOf(curId);
+  if (idx >= 0 && idx < TAB_ORDER.length - 1) {
+    const nextId = TAB_ORDER[idx + 1];
+    $("#" + nextId).focus().select();
+  }
+});
+
+/* ───────────────────────────────────────────
+   3. BẢNG CHỌN LÔ ÉP TỰ ĐỘNG THEO MÃ SP
+─────────────────────────────────────────── */
+function loadPressOptions() {
+  const productionNumberId = $("#production_number_id").val();
+  if (!productionNumberId || productionNumberId == 0) {
+    $("#press_options_table tbody").empty();
+    return;
+  }
+  $.ajax({
+    type: "POST",
+    url: "./php/SelPressOptions.php",
+    dataType: "json",
+    data: { production_number_id: productionNumberId },
+    async: false
+  }).done(function(data) {
+    renderPressOptions(data);
+  }).fail(function(err) {
+    console.error("Lỗi load lô ép:", err.responseText);
+  });
+}
+
+function renderPressOptions(data) {
+  const $tbody = $("#press_options_table tbody");
+  $tbody.empty();
+  if (!data || data.error) {
+    $tbody.append("<tr><td colspan='3' style='color:#dc2626'>Lỗi: " + (data && data.error ? data.error : "không xác định") + "</td></tr>");
+    return;
+  }
+  if (data.length === 0) {
+    $tbody.append("<tr><td colspan='3' style='color:#9aa3b0'>Không có lô ép nào cho mã SP này</td></tr>");
+    return;
+  }
+  data.forEach(function(row) {
+    const availQty = Number(row.available_qty) || 0;
+    const rowClass = availQty <= 0 ? "row-out-of-stock" : "";
+    const $tr = $("<tr>")
+      .addClass(rowClass)
+      .attr("data-press-id", row.press_id)
+      .attr("data-press-date", row.press_date_at)
+      .attr("data-die-number", row.die_number || "");
+    $tr.append($("<td>").text(row.press_date_at || "-"));
+    $tr.append($("<td>").addClass(availQty > 0 ? "qty-ok" : "qty-empty").text(availQty));
+    $tr.append($("<td>").text(row.total_rack || 0));
+    $tbody.append($tr);
+  });
+}
+
+$(document).on("click", "#press_options_table tbody tr", function() {
+  if ($(this).hasClass("row-out-of-stock")) {
+    alert("Lô ép này đã hết rack khả dụng, vui lòng chọn lô khác.");
+    return;
+  }
+  $("#press_options_table tbody tr").removeClass("selected-record");
+  $(this).addClass("selected-record");
+
+  const pressId = $(this).data("press-id");
+  const pressDate = $(this).data("press-date");
+  const dieNumber = $(this).data("die-number");
+
+  $("#press_date").val(pressDate);
+
+  // FIX: #press_id là <select>, .val() chỉ hoạt động nếu có <option>
+  // khớp giá trị đó trước. Tự thêm option (giống cách SelDies gốc làm).
+  if ($("#press_id").length) {
+    $("#press_id option").remove();
+    $("#press_id").append($("<option>").val(pressId).html(dieNumber));
+    $("#press_id").val(pressId);
+  }
+  makePressTable();
+});
+
+$(document).on("change", "#production_number_id", function() {
+  loadPressOptions();
+});
+
+$(document).ready(function() {
+  $("#press_date").closest("tr").hide();
+});
+
+/* ───────────────────────────────────────────
+   FIX: gọi lại makeSummaryTable() sau khi mọi patch
+   đã nạp xong, để KPI bar hiện ngay từ lần tải đầu.
+   (Lần gọi gốc ở đầu file chạy TRƯỚC khi fillTableBody
+   bị hook ở đây, nên không kích hoạt updateKPIBar được)
+─────────────────────────────────────────── */
+makeSummaryTable();
+
+/* ════════════════════════════════════════════════════════════
+   ═══ PATCH v6 — AUTOCOMPLETE DROPDOWN ═══
+   Thay thế việc phải mở <select> ẩn bằng dropdown gợi ý nổi,
+   click chọn trực tiếp. KHÔNG sửa SelProductionNumber/SelDies/
+   SelPlugs/selStaffDrawing gốc — chỉ "nghe" ajaxReturnData sau
+   khi các hàm đó chạy, rồi render dropdown từ chính data đó.
+════════════════════════════════════════════════════════════ */
+
+const AUTOCOMPLETE_CONFIG = [
+  { inputId: "production_number", selectId: "production_number_id", triggerFn: function(){ SelProductionNumber(); } },
+  { inputId: "die_number",         selectId: "die_number_id",         triggerFn: function(){ SelDies(); } },
+  { inputId: "plug_number",        selectId: "plug_number_id",        triggerFn: function(){ SelPlugs(); } },
+  { inputId: "staff",              selectId: "staff_id",              triggerFn: function(){ selStaffDrawing(); } },
+  { inputId: "staff_cut",          selectId: "cutting_staff_id",      triggerFn: function(){ selStaffCutting(); } }
+];
+
+function _buildAutocompleteDropdown(cfg) {
+  const $input = $("#" + cfg.inputId);
+  if (!$input.length) return;
+
+  // Tạo wrapper relative để dropdown nổi đúng vị trí
+  if (!$input.parent().hasClass("ac-wrapper")) {
+    $input.wrap("<div class='ac-wrapper'></div>");
+  }
+  if ($("#ac-list-" + cfg.inputId).length === 0) {
+    $("<div>").attr("id", "ac-list-" + cfg.inputId).addClass("ac-dropdown").insertAfter($input);
+  }
+}
+
+function _renderAutocompleteList(cfg) {
+  const $select = $("#" + cfg.selectId);
+  const $list = $("#ac-list-" + cfg.inputId);
+  $list.empty();
+
+  const options = $select.find("option").filter(function() {
+    return $(this).val() != 0; // bỏ option "NO"
+  });
+
+  if (options.length === 0) {
+    $list.hide();
+    return;
+  }
+
+  options.each(function() {
+    const val = $(this).val();
+    const text = $(this).text();
+    $("<div>").addClass("ac-item").text(text).attr("data-val", val).appendTo($list);
+  });
+  $list.show();
+}
+
+$(document).on("click", ".ac-item", function() {
+  const $list = $(this).parent();
+  const inputId = $list.attr("id").replace("ac-list-", "");
+  const cfg = AUTOCOMPLETE_CONFIG.find(function(c) { return c.inputId === inputId; });
+  if (!cfg) return;
+
+  const val = $(this).data("val");
+  const text = $(this).text();
+
+  $("#" + cfg.inputId).val(text);
+  $("#" + cfg.selectId).val(val).trigger("change");
+  $list.hide();
+});
+
+// Ẩn dropdown khi click ra ngoài
+$(document).on("click", function(e) {
+  if (!$(e.target).hasClass("ac-item") && !$(e.target).hasClass("ac-input")) {
+    $(".ac-dropdown").hide();
+  }
+});
+
+// Hook vào sau mỗi lần keyup trigger search — render lại list
+AUTOCOMPLETE_CONFIG.forEach(function(cfg) {
+  _buildAutocompleteDropdown(cfg);
+  $(document).on("keyup", "#" + cfg.inputId, function() {
+    setTimeout(function() { _renderAutocompleteList(cfg); }, 50); // đợi AJAX sync xong
+  });
+  $("#" + cfg.inputId).addClass("ac-input").attr("autocomplete", "off");
+});
+
+/* ════════════════════════════════════════════════════════════
+   ═══ PATCH v7 — ĐA NGÔN NGỮ VI / EN / JP ═══
+   Cơ chế: gắn data-i18n="key" vào <th>/<label> trong HTML,
+   JS đổi text theo ngôn ngữ chọn. Lưu lựa chọn vào localStorage.
+   KHÔNG đổi placeholder/value của input — chỉ đổi label hiển thị.
+════════════════════════════════════════════════════════════ */
+
+const I18N_DICT = {
+  ngay_sx:       { vi: "Ngày SX",        en: "Prod. Date",     jp: "生産日" },
+  gio_sx:        { vi: "Giờ SX",         en: "Time",           jp: "時間" },
+  nhan_vien:     { vi: "Nhân viên",      en: "Staff",          jp: "担当者" },
+  ma_ct:         { vi: "Mã CT",          en: "Order No.",      jp: "注文番号" },
+  ma_sp:         { vi: "Mã SP",          en: "Product Code",   jp: "品番" },
+  ma_khuon:      { vi: "Mã Khuôn",       en: "Die No.",        jp: "ダイス番号" },
+  tt_khuon:      { vi: "TT Khuôn",       en: "Die Status",     jp: "ダイス状態" },
+  ma_plug:       { vi: "Mã Plug",        en: "Plug No.",       jp: "プラグ番号" },
+  tt_plug:       { vi: "TT Plug",        en: "Plug Status",    jp: "プラグ状態" },
+  ngay_dun:      { vi: "Ngày đùn",       en: "Press Date",     jp: "押出日" },
+  chon_lo_ep:    { vi: "📋 Chọn lô ép (tự động theo Mã SP)", en: "📋 Select Press Lot (auto by Product Code)", jp: "📋 プレスロット選択（品番自動）" },
+  khuon:         { vi: "Khuôn",          en: "Die",            jp: "ダイス" },
+  dieu_chinh_khuon: { vi: "Điều chỉnh khuôn", en: "Die Adjustment", jp: "ダイス調整" },
+  bop_ong:       { vi: "Bóp ống",        en: "Tube Squeeze",   jp: "管絞り" },
+  toc_do_keo:    { vi: "Tốc độ kéo",     en: "Pull Speed",     jp: "引抜速度" },
+  chinh_thang:   { vi: "Chỉnh thẳng",    en: "Straightening",  jp: "矯正" },
+  ngay_cat:      { vi: "Ngày cắt",       en: "Cut Date",       jp: "切断日" },
+  nv_cat:        { vi: "NV cắt",         en: "Cut Staff",      jp: "切断担当" },
+  save:          { vi: "Lưu",            en: "Save",           jp: "保存" },
+  update:        { vi: "Cập nhật",       en: "Update",         jp: "更新" },
+  admin:         { vi: "🔒 Admin",       en: "🔒 Admin",        jp: "🔒 管理者" },
+  th_ngay_sx:    { vi: "Ngày SX",        en: "Date",           jp: "生産日" },
+  th_ma_sp:      { vi: "Mã SP",          en: "Product",        jp: "品番" },
+  th_nv_bc:      { vi: "NV báo cáo",     en: "Reported By",    jp: "報告者" },
+  th_sua:        { vi: "Sửa",            en: "Edit",           jp: "編集" }
+};
+
+const LANG_KEY = "tube_drawing_lang";
+
+function getCurrentLang() {
+  return localStorage.getItem(LANG_KEY) || "vi";
+}
+
+function applyLanguage(lang) {
+  localStorage.setItem(LANG_KEY, lang);
+  $("[data-i18n]").each(function() {
+    const key = $(this).data("i18n");
+    if (I18N_DICT[key] && I18N_DICT[key][lang]) {
+      $(this).text(I18N_DICT[key][lang]);
+    }
+  });
+  $(".lang-switch-btn").removeClass("act");
+  $(".lang-switch-btn[data-lang='" + lang + "']").addClass("act");
+}
+
+$(document).ready(function() {
+  // Thêm nút chuyển ngôn ngữ vào header (cạnh nút Admin)
+  const $langSwitch = $("<div>").addClass("lang-switch").css({display:"inline-flex", marginLeft:"8px", gap:"2px"});
+  ["vi", "en", "jp"].forEach(function(lang) {
+    $("<button>")
+      .addClass("lang-switch-btn")
+      .attr("data-lang", lang)
+      .text(lang.toUpperCase())
+      .css({fontSize:"9px", padding:"3px 7px", minWidth:"auto"})
+      .on("click", function() { applyLanguage(lang); })
+      .appendTo($langSwitch);
+  });
+  $("header").append($langSwitch);
+
+  applyLanguage(getCurrentLang());
+});
+
+/* ════════════════════════════════════════════════════════════
+   ═══ PATCH v8 — VALIDATE: chỉ cho Update khi CÓ thay đổi thật ═══
+   checkUpdate() gốc chỉ check "đã điền đủ", không check "có sửa gì không".
+   Patch này thêm điều kiện: phải có ít nhất 1 field khác giá trị
+   lúc vừa chọn record (snapshot lúc selected-record được click).
+════════════════════════════════════════════════════════════ */
+
+let _recordSnapshot = null;
+
+function _takeSnapshot() {
+  const snap = {};
+  $(".left__wrapper .save-data").each(function() {
+    const id = $(this).attr("id");
+    if (id) snap[id] = $(this).val();
+  });
+  return snap;
+}
+
+function _hasChangedFromSnapshot() {
+  if (!_recordSnapshot) return false;
+  let changed = false;
+  $(".left__wrapper .save-data").each(function() {
+    const id = $(this).attr("id");
+    if (id && _recordSnapshot[id] !== undefined && _recordSnapshot[id] !== $(this).val()) {
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+// Khi 1 dòng summary được click chọn (selected-record) → lưu snapshot
+$(document).on("click", "#summary__table tbody tr", function() {
+  setTimeout(function() {
+    _recordSnapshot = _takeSnapshot();
+  }, 300); // đợi putDataToInput() điền xong field
+});
+
+// Hook thêm điều kiện vào checkUpdate gốc — không sửa hàm gốc, chỉ thêm guard sau khi nó chạy
+const _origCheckUpdate = checkUpdate;
+checkUpdate = function() {
+  const baseCheck = _origCheckUpdate();
+  if (baseCheck && !_hasChangedFromSnapshot()) {
+    $("#update__button").attr("disabled", true);
+    return false;
+  }
+  return baseCheck;
+};
+
+// Re-check mỗi khi người dùng gõ vào field bất kỳ trong left__wrapper
+$(document).on("input change", ".left__wrapper .save-data", function() {
+  checkUpdate();
 });
